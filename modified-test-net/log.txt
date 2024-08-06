@@ -1,0 +1,2 @@
+Committed chaincode definition for chaincode 'private' on channel 'channel2':
+Version: 1.0.1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: false, Org3MSP: true]
