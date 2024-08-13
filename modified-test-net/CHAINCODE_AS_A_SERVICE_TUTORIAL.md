@@ -14,9 +14,9 @@ We need to use the latest 2.4.1 release as this contains some improvements to ma
 - The `ccaasbuilder` applications are included in the binary tgz archive download for use in other circumstances. The `sampleconfig/core.yaml` is updated as well to refer to 'ccaasbuilder'
 - The 2.4.1 Java Chaincode release has been updated to remove the need to write a custom bootstrap main class, similar  to the Node.js Chaincode. It is intended that this will be added to the go chaincode as well.
 
-## End-to-end with the the test-network
+## End-to-end with the the modified-test-net
 
-The `test-network` and some of the chaincodes have been updated to support running chaincode-as-a-service. The commands below assume that you've got the latest fabric-samples cloned, along with the latest Fabric docker images.
+The `modified-test-net` and some of the chaincodes have been updated to support running chaincode-as-a-service. The commands below assume that you've got the latest fabric-samples cloned, along with the latest Fabric docker images.
 
 It's useful to have two terminal windows open, one for starting the Fabric Network, and a second for monitoring all the docker containers.
 
@@ -24,13 +24,13 @@ In your 'monitoring' window, run this to watch all activity from the all the doc
 
 ```bash
 # from the fabric-samples repo
-./test-network/monitordocker.sh
+./modified-test-net/monitordocker.sh
 ```
 
 In the 'Fabric Network' window, start the test network
 
 ```bash
-cd test-network
+cd modified-test-net
 ./network.sh up createChannel -ca
 ```
 
@@ -161,8 +161,8 @@ For all languages please note:
 
 - the name of the container needs to match what the peer has in the `connection.json`
 - the peer is connecting to the chaincode container via the docker network. Therefore port 9999 does not need to be forwarded to the host
-- If you are going to single step in a debugger, then you are likely to hit the Fabric transaction timeout value. By default this is 30 seconds, meaning the chaincode has to complete transactions in 30 seconds or less. In the `test-network/docker/docker-composer-test-net.yml` add `CORE_CHAINCODE_EXECUTETIMEOUT=300s` to the environment options of each peer.
-- In the command above, the `-d` option has been removed from the command the test-network would have used, and has been replaced with `-it`. This means that docker container will not run in detached mode, and will run in the foreground.
+- If you are going to single step in a debugger, then you are likely to hit the Fabric transaction timeout value. By default this is 30 seconds, meaning the chaincode has to complete transactions in 30 seconds or less. In the `modified-test-net/docker/docker-composer-test-net.yml` add `CORE_CHAINCODE_EXECUTETIMEOUT=300s` to the environment options of each peer.
+- In the command above, the `-d` option has been removed from the command the modified-test-net would have used, and has been replaced with `-it`. This means that docker container will not run in detached mode, and will run in the foreground.
 
 For Node.js please note:
 

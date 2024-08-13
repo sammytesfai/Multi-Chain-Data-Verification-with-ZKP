@@ -6,21 +6,26 @@
 
 import { connect, Contract } from '@hyperledger/fabric-gateway';
 import { TextDecoder } from 'util';
+import { groth16 } from "snarkjs";
+import fs from "fs";
 import {
-    certDirectoryPathOrg1, certDirectoryPathOrg2, keyDirectoryPathOrg1, keyDirectoryPathOrg2, newGrpcConnection, newIdentity,
-    newSigner, peerEndpointOrg1, peerEndpointOrg2, peerNameOrg1, peerNameOrg2, tlsCertPathOrg1, tlsCertPathOrg2
+    certDirectoryPathOrg1, certDirectoryPathOrg2, /*certDirectoryPathOrg3,*/ keyDirectoryPathOrg1, keyDirectoryPathOrg2, /*keyDirectoryPathOrg3,*/ newGrpcConnection, newIdentity,
+    newSigner, peerEndpointOrg1, peerEndpointOrg2, /*peerEndpointOrg3,*/ peerNameOrg1, peerNameOrg2, /*peerNameOrg3,*/ tlsCertPathOrg1, tlsCertPathOrg2, /*tlsCertPathOrg3*/
 } from './connect';
 
-const channelName = 'channel1';
+const channelName1 = 'channel1';
+// const channelName2 = 'channel2';
 const chaincodeName = 'private';
 const mspIdOrg1 = 'Org1MSP';
 const mspIdOrg2 = 'Org2MSP';
+// const mspIdOrg3 = 'Org3MSP';
 
 const utf8Decoder = new TextDecoder();
 
 // Collection Names
 const org1PrivateCollectionName = 'Org1MSPPrivateCollection';
 const org2PrivateCollectionName = 'Org2MSPPrivateCollection';
+// const org3PrivateCollectionName = 'Org3MSPPrivateCollection';
 
 const RED = '\x1b[31m\n';
 const RESET = '\x1b[0m';
@@ -28,7 +33,15 @@ const RESET = '\x1b[0m';
 // Use a unique key so that we can run multiple times
 const now = Date.now();
 const assetID1 = `asset${String(now)}`;
-const assetID2 = `asset${String(now + 1)}`;
+// const assetID2 = `asset${String(now + 1)}`;
+
+type Asset = [string, string, number, number];
+
+const assets: Asset[] = [
+  [assetID1, 'green', 20, 100],
+//   [assetID2, 'red', 50, 727],
+];
+let counter = 0;
 
 async function main(): Promise<void> {
     const clientOrg1 = await newGrpcConnection(
@@ -55,16 +68,38 @@ async function main(): Promise<void> {
         signer: await newSigner(keyDirectoryPathOrg2),
     });
 
+    // const clientOrg3 = await newGrpcConnection(
+    //     tlsCertPathOrg3,
+    //     peerEndpointOrg3,
+    //     peerNameOrg3
+    // );
+
+    // const gatewayOrg3 = connect({
+    //     client: clientOrg3,
+    //     identity: await newIdentity(certDirectoryPathOrg3, mspIdOrg3),
+    //     signer: await newSigner(keyDirectoryPathOrg3),
+    // });
+
     try {
         // Get the smart contract as an Org1 client.
         const contractOrg1 = gatewayOrg1
-            .getNetwork(channelName)
+            .getNetwork(channelName1)
             .getContract(chaincodeName);
 
         // Get the smart contract as an Org2 client.
         const contractOrg2 = gatewayOrg2
-            .getNetwork(channelName)
+            .getNetwork(channelName1)
             .getContract(chaincodeName);
+
+        // Get the smart contract as an Org1 client.
+        // const contractOrg1_2 = gatewayOrg1
+        //     .getNetwork(channelName2)
+        //     .getContract(chaincodeName);
+
+        // Get the smart contract as an Org3 client.
+        // const contractOrg3 = gatewayOrg3
+        //     .getNetwork(channelName2)
+        //     .getContract(chaincodeName);
 
         console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
 
@@ -74,14 +109,11 @@ async function main(): Promise<void> {
         // Read asset from the Org1's private data collection with ID in the given range.
         await getAssetsByRange(contractOrg1);
 
-        try {
-            // Attempt to transfer asset without prior aprroval from Org2, transaction expected to fail.
-            console.log('\nAttempt TransferAsset without prior AgreeToTransfer');
-            await transferAsset(contractOrg1, assetID1);
-            doFail('TransferAsset transaction succeeded when it was expected to fail');
-        } catch (e) {
-            console.log('*** Received expected error:', e);
-        }
+        // Create new assets on the ledger.
+        // await createAssets(contractOrg1_2);
+
+        // Read asset from the Org1's private data collection with ID in the given range.
+        // await getAssetsByRange(contractOrg1_2);
 
         console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
 
@@ -91,22 +123,45 @@ async function main(): Promise<void> {
         // Make agreement to transfer the asset from Org1 to Org2.
         await agreeToTransfer(contractOrg2, assetID1);
 
+        // console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
+
+        // Read the asset by ID.
+        // await readAssetByID(contractOrg3, assetID2);
+
+        // Make agreement to transfer the asset from Org1 to Org2.
+        // await agreeToTransfer(contractOrg3, assetID2);
+
         console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
 
         // Read transfer agreement.
         await readTransferAgreement(contractOrg1, assetID1);
 
+        // Read transfer agreement.
+        // await readTransferAgreement(contractOrg1_2, assetID2);
+
         // Transfer asset to Org2.
         await transferAsset(contractOrg1, assetID1);
 
+        // Transfer asset to Org3.
+        // await transferAsset(contractOrg1_2, assetID2);
+
         // Again ReadAsset : results will show that the buyer identity now owns the asset.
         await readAssetByID(contractOrg1, assetID1);
+
+        // Again ReadAsset : results will show that the buyer identity now owns the asset.
+        // await readAssetByID(contractOrg1_2, assetID2);
 
         // Confirm that transfer removed the private details from the Org1 collection.
         const org1ReadSuccess = await readAssetPrivateDetails(contractOrg1, assetID1, org1PrivateCollectionName);
         if (org1ReadSuccess) {
             doFail(`Asset private data still exists in ${org1PrivateCollectionName}`);
         }
+
+        // Confirm that transfer removed the private details from the Org1 collection.
+        // const org1ReadSuccess_2 = await readAssetPrivateDetails(contractOrg1_2, assetID2, org1PrivateCollectionName);
+        // if (org1ReadSuccess_2) {
+        //     doFail(`Asset private data still exists in ${org1PrivateCollectionName}`);
+        // }
 
         console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
 
@@ -116,22 +171,13 @@ async function main(): Promise<void> {
             doFail(`Asset private data not found in ${org2PrivateCollectionName}`);
         }
 
-        try {
-            console.log('\nAttempt DeleteAsset using non-owner organization');
-            await deleteAsset(contractOrg2, assetID2);
-            doFail('DeleteAsset transaction succeeded when it was expected to fail');
-        } catch (e) {
-            console.log('*** Received expected error:', e);
-        }
+        // console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
 
-        console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
-
-        // Delete AssetID2 as Org1.
-        await deleteAsset(contractOrg1, assetID2);
-
-        // Trigger a purge of the private data for the asset
-        // The previous delete is optinal if purge is used
-        await purgeAsset(contractOrg1, assetID2);
+        // Org2 can read asset private details: Org2 is owner, and private details exist in new owner's Collection
+        // const org3ReadSuccess = await readAssetPrivateDetails(contractOrg3, assetID2, org3PrivateCollectionName);
+        // if (!org3ReadSuccess) {
+        //     doFail(`Asset private data not found in ${org3PrivateCollectionName}`);
+        // }
     } finally {
         gatewayOrg1.close();
         clientOrg1.close();
@@ -152,14 +198,14 @@ main().catch((error: unknown) => {
 async function createAssets(contract: Contract): Promise<void> {
     const assetType = 'ValuableAsset';
 
-    console.log(`\n--> Submit Transaction: CreateAsset, ID: ${assetID1}`);
+    console.log(`\n--> Submit Transaction: CreateAsset, ID: ${assets[counter]![0]}`);
 
     const asset1Data = {
         objectType: assetType,
-        assetID: assetID1,
-        color: 'green',
-        size: 20,
-        appraisedValue: 100,
+        assetID: assets[counter]![0],
+        color: assets[counter]![1],
+        size: assets[counter]![2],
+        appraisedValue: assets[counter]![3],
     };
 
     await contract.submit('CreateAsset', {
@@ -167,21 +213,8 @@ async function createAssets(contract: Contract): Promise<void> {
     });
 
     console.log('*** Transaction committed successfully');
-    console.log(`\n--> Submit Transaction: CreateAsset, ID: ${assetID2}`);
 
-    const asset2Data = {
-        objectType: assetType,
-        assetID: assetID2,
-        color: 'blue',
-        size: 35,
-        appraisedValue: 727,
-    };
-
-    await contract.submit('CreateAsset', {
-        transientData: { asset_properties: JSON.stringify(asset2Data) },
-    });
-
-    console.log('*** Transaction committed successfully');
+    counter++;
 }
 
 async function getAssetsByRange(contract: Contract): Promise<void> {
@@ -255,25 +288,25 @@ async function transferAsset(contract: Contract, assetID: string): Promise<void>
     console.log('*** Transaction committed successfully');
 }
 
-async function deleteAsset(contract: Contract, assetID: string): Promise<void> {
-    console.log('\n--> Submit Transaction: DeleteAsset, ID:', assetID);
-    const dataForDelete = { assetID };
-    await contract.submit('DeleteAsset', {
-        transientData: { asset_delete: JSON.stringify(dataForDelete) },
-    });
+// async function deleteAsset(contract: Contract, assetID: string): Promise<void> {
+//     console.log('\n--> Submit Transaction: DeleteAsset, ID:', assetID);
+//     const dataForDelete = { assetID };
+//     await contract.submit('DeleteAsset', {
+//         transientData: { asset_delete: JSON.stringify(dataForDelete) },
+//     });
 
-    console.log('*** Transaction committed successfully');
-}
+//     console.log('*** Transaction committed successfully');
+// }
 
-async function purgeAsset(contract: Contract, assetID: string): Promise<void> {
-    console.log('\n--> Submit Transaction: PurgeAsset, ID:', assetID);
-    const dataForPurge = { assetID };
-    await contract.submit('PurgeAsset', {
-        transientData: { asset_purge: JSON.stringify(dataForPurge) },
-    });
+// async function purgeAsset(contract: Contract, assetID: string): Promise<void> {
+//     console.log('\n--> Submit Transaction: PurgeAsset, ID:', assetID);
+//     const dataForPurge = { assetID };
+//     await contract.submit('PurgeAsset', {
+//         transientData: { asset_purge: JSON.stringify(dataForPurge) },
+//     });
 
-    console.log('*** Transaction committed successfully');
-}
+//     console.log('*** Transaction committed successfully');
+// }
 
 async function readAssetPrivateDetails(contract: Contract, assetID: string, collectionName: string): Promise<boolean> {
     console.log(`\n--> Evaluate Transaction: ReadAssetPrivateDetails from ${collectionName}, ID: ${assetID}`);
@@ -297,4 +330,18 @@ async function readAssetPrivateDetails(contract: Contract, assetID: string, coll
 export function doFail(msgString: string): never {
     console.error(`${RED}\t${msgString}${RESET}`);
     throw new Error(msgString);
+}
+
+async function generateProof(x: number, y: number) {
+    const input = { x, y };
+
+    const wasmPath = "./greater_or_equal_js/greater_or_equal.wasm";
+    const zkeyPath = "./greater_or_equal.zkey";
+
+    const { proof, publicSignals } = await groth16.fullProve(input, wasmPath, zkeyPath);
+
+    console.log("Proof: ", proof);
+    console.log("Public Signals: ", publicSignals);
+
+    return { proof, publicSignals };
 }

@@ -2,7 +2,7 @@
 
 You can use the `addOrg3.sh` script to add another organization to the Fabric test network. The `addOrg3.sh` script generates the Org3 crypto material, creates an Org3 organization definition, and adds Org3 to a channel on the test network.
 
-You first need to run `./network.sh up createChannel` in the `test-network` directory before you can run the `addOrg3.sh` script.
+You first need to run `./network.sh up createChannel` in the `modified-test-net` directory before you can run the `addOrg3.sh` script.
 
 ```
 ./network.sh up createChannel

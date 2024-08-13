@@ -8,9 +8,9 @@
 # This is a collection of bash functions used by different scripts
 
 # imports
-# test network home var targets to test-network folder
+# test network home var targets to modified-test-net folder
 # the reason we use a var here is to accommodate scenarios
-# where execution occurs from folders outside of default as $PWD, such as the test-network/addOrg3 folder.
+# where execution occurs from folders outside of default as $PWD, such as the modified-test-net/addOrg3 folder.
 # For setting environment variables, simple relative paths like ".." could lead to unintended references
 # due to how they interact with FABRIC_CFG_PATH. It's advised to specify paths more explicitly,
 # such as using "../${PWD}", to ensure that Fabric's environment variables are pointing to the correct paths.

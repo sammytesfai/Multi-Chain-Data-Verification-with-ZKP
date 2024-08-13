@@ -28,7 +28,7 @@ Before you can deploy the test network, you need to follow the instructions to [
 
 The `setOrgEnv.sh` script can be used to set up the environment variables for the organizations, this will help to be able to use the `peer` commands directly.
 
-First, ensure that the peer binaries are on your path, and the Fabric Config path is set assuming that you're in the `test-network` directory.
+First, ensure that the peer binaries are on your path, and the Fabric Config path is set assuming that you're in the `modified-test-net` directory.
 
 ```bash
  export PATH=$PATH:$(realpath ../bin)
@@ -48,7 +48,7 @@ The `setOrgEnv` script outputs a series of `<name>=<value>` strings. These can t
 
 ## Chaincode-as-a-service
 
-To learn more about how to use the improvements to the Chaincode-as-a-service please see this [tutorial](./test-network/../CHAINCODE_AS_A_SERVICE_TUTORIAL.md). It is expected that this will move to augment the tutorial in the [Hyperledger Fabric ReadTheDocs](https://hyperledger-fabric.readthedocs.io/en/release-2.4/cc_service.html)
+To learn more about how to use the improvements to the Chaincode-as-a-service please see this [tutorial](./modified-test-net/../CHAINCODE_AS_A_SERVICE_TUTORIAL.md). It is expected that this will move to augment the tutorial in the [Hyperledger Fabric ReadTheDocs](https://hyperledger-fabric.readthedocs.io/en/release-2.4/cc_service.html)
 
 
 ## Podman

@@ -8,7 +8,7 @@ import (
 func main() {
 	//Initialize setup for Org1
 	cryptoPath := "../../modified-test-net/organizations/peerOrganizations/org1.example.com"
-	//cryptoPath := "../../test-network/organizations/peerOrganizations/org1.example.com"
+	//cryptoPath := "../../modified-test-net/organizations/peerOrganizations/org1.example.com"
 	orgConfig := web.OrgSetup{
 		OrgName:      "Org1",
 		MSPID:        "Org1MSP",

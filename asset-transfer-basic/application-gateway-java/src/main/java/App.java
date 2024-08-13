@@ -39,7 +39,7 @@ public final class App {
 	private static final String CHAINCODE_NAME = System.getenv().getOrDefault("CHAINCODE_NAME", "basic");
 
 	// Path to crypto materials.
-	private static final Path CRYPTO_PATH = Paths.get("../../test-network/organizations/peerOrganizations/org1.example.com");
+	private static final Path CRYPTO_PATH = Paths.get("../../modified-test-net/organizations/peerOrganizations/org1.example.com");
 	// Path to user certificate.
 	private static final Path CERT_DIR_PATH = CRYPTO_PATH.resolve(Paths.get("users/User1@org1.example.com/msp/signcerts"));
 	// Path to user private key directory.

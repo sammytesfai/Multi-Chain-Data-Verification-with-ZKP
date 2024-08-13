@@ -41,12 +41,12 @@ getQueryResultForQueryString
 
 Like other samples, the Fabric test network is used to deploy and run this sample. Follow these steps in order:
 
-1. Create the test network and a channel (from the `test-network` folder).
+1. Create the test network and a channel (from the `modified-test-net` folder).
    ```
    ./network.sh up createChannel -c mychannel -ca
    ```
 
-2. Deploy one of the smart contract implementations (from the `test-network` folder).
+2. Deploy one of the smart contract implementations (from the `modified-test-net` folder).
    ```
    # To deploy the Java chaincode implementation
    ./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-java  -ccl java -ccep "OR('Org1MSP.peer','Org2MSP.peer')"  -cccg '../asset-transfer-private-data/chaincode-java/collections_config.json' -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
@@ -68,7 +68,7 @@ Like other samples, the Fabric test network is used to deploy and run this sampl
 
 ## Clean up
 
-When you are finished, you can bring down the test network (from the `test-network` folder). The command will remove all the nodes of the test network, and delete any ledger data that you created.
+When you are finished, you can bring down the test network (from the `modified-test-net` folder). The command will remove all the nodes of the test network, and delete any ledger data that you created.
 
 ```
 ./network.sh down

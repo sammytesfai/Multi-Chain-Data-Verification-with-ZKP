@@ -16,7 +16,7 @@ const cryptoPathOrg1 = path.resolve(
     '..',
     '..',
     '..',
-    'test-network',
+    'modified-test-net',
     'organizations',
     'peerOrganizations',
     'org1.example.com'
@@ -55,7 +55,7 @@ export const cryptoPathOrg2 = path.resolve(
     '..',
     '..',
     '..',
-    'test-network',
+    'modified-test-net',
     'organizations',
     'peerOrganizations',
     'org2.example.com'
@@ -88,13 +88,54 @@ export const tlsCertPathOrg2 = path.resolve(
     'ca.crt'
 );
 
+// Path to org3 crypto materials.
+export const cryptoPathOrg3 = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    'modified-test-net',
+    'organizations',
+    'peerOrganizations',
+    'org3.example.com'
+);
+
+// Path to org3 user private key directory.
+export const keyDirectoryPathOrg3 = path.resolve(
+    cryptoPathOrg3,
+    'users',
+    'User1@org3.example.com',
+    'msp',
+    'keystore'
+);
+
+// Path to org3 user certificate.
+export const certDirectoryPathOrg3 = path.resolve(
+    cryptoPathOrg3,
+    'users',
+    'User1@org3.example.com',
+    'msp',
+    'signcerts'
+);
+
+// Path to org3 peer tls certificate.
+export const tlsCertPathOrg3 = path.resolve(
+    cryptoPathOrg3,
+    'peers',
+    'peer0.org3.example.com',
+    'tls',
+    'ca.crt'
+);
+
 // Gateway peer endpoint.
 export const peerEndpointOrg1 = 'localhost:7051';
 export const peerEndpointOrg2 = 'localhost:9051';
+export const peerEndpointOrg3 = 'localhost:11051';
 
 // Gateway peer container name.
 export const peerNameOrg1 = 'peer0.org1.example.com';
 export const peerNameOrg2 = 'peer0.org2.example.com';
+export const peerNameOrg3 = 'peer0.org3.example.com';
 
 
 export async function newGrpcConnection(

@@ -36,13 +36,13 @@ Note that the asset transfer implemented by the smart contract is a simplified s
 
 The Fabric test network is used to deploy and run this sample. Follow these steps in order:
 
-1. Create the test network and a channel (from the `test-network` folder).
+1. Create the test network and a channel (from the `modified-test-net` folder).
 
    ```
    ./network.sh up createChannel -c mychannel -ca
    ```
 
-1. Deploy one of the smart contract implementations (from the `test-network` folder).
+1. Deploy one of the smart contract implementations (from the `modified-test-net` folder).
 
    - To deploy the **TypeScript** chaincode implementation:
 
@@ -100,7 +100,7 @@ The Fabric test network is used to deploy and run this sample. Follow these step
 
 ## Clean up
 
-When you are finished, you can bring down the test network (from the `test-network` folder). The command will remove all the nodes of the test network, and delete any ledger data that you created.
+When you are finished, you can bring down the test network (from the `modified-test-net` folder). The command will remove all the nodes of the test network, and delete any ledger data that you created.
 
 ```shell
 ./network.sh down

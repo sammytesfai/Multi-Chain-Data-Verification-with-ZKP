@@ -1,5 +1,5 @@
 version: '3'
-# Replace network name with the fabric test-network name 
+# Replace network name with the fabric modified-test-net name 
 services:
   redis: 
     image: 'redis'

@@ -28,7 +28,7 @@ import (
 const (
 	mspID      = "Org1MSP"
 	cryptoPath = "/home/sammy/Masters_Thesis/Multi-Chain-Data-Verification-with-ZKP/modified-test-net/organizations/peerOrganizations/org1.example.com"
-	//cryptoPath   = "/home/sammy/Masters_Thesis/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com"
+	//cryptoPath   = "/home/sammy/Masters_Thesis/fabric-samples/modified-test-net/organizations/peerOrganizations/org1.example.com"
 	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts"
 	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore"
 	tlsCertPath  = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"

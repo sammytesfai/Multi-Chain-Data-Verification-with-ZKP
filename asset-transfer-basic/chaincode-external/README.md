@@ -20,7 +20,7 @@ externalBuilders:
 
 This update sets the name of the external builder as `external-sample-builder`, and the path of the builder to the scripts provided in this sample. Note that this is the path within the peer container, not your local machine.
 
-To set the path within the peer container, you will need to modify the docker compose file to mount a couple of additional volumes. Open the file `test-network/compose/docker/docker-compose-test-net.yaml`, and add to the `volumes` section of both `peer0.org1.example.com` and `peer0.org2.example.com` the following two lines:
+To set the path within the peer container, you will need to modify the docker compose file to mount a couple of additional volumes. Open the file `modified-test-net/compose/docker/docker-compose-test-net.yaml`, and add to the `volumes` section of both `peer0.org1.example.com` and `peer0.org2.example.com` the following two lines:
 
 ```
         - ../..:/opt/gopath/src/github.com/hyperledger/fabric-samples
@@ -61,10 +61,10 @@ You are now ready to deploy the external chaincode sample.
 
 ## Starting the test network
 
-We will use the Fabric test network to run the external chaincode. Open a new terminal and navigate to the `fabric-samples/test-network` directory.
+We will use the Fabric test network to run the external chaincode. Open a new terminal and navigate to the `fabric-samples/modified-test-net` directory.
 
 ```
-cd fabric-samples/test-network
+cd fabric-samples/modified-test-net
 ```
 
 Run the following command to deploy the test network and create a new channel:
@@ -77,9 +77,9 @@ We are now ready to deploy the external chaincode.
 
 ## Installing the external chaincode
 
-We can't use the test network script to install an external chaincode so we will have to do a bit more work. However, we can still leverage part of the test-network scripts to make this easier.
+We can't use the test network script to install an external chaincode so we will have to do a bit more work. However, we can still leverage part of the modified-test-net scripts to make this easier.
 
-From the `test-network` directory, set the following environment variables to use the Fabric binaries:
+From the `modified-test-net` directory, set the following environment variables to use the Fabric binaries:
 
 ```
 export PATH=${PWD}/../bin:$PATH
@@ -152,7 +152,7 @@ This will start and run the external chaincode service within the container.
 
 ## Deploy the Asset-Transfer-Basic external chaincode definition to the channel
 
-Navigate back to the `test-network` directory to finish deploying the chaincode definition of the external smart contract to the channel. Make sure that your environment variables are still set.
+Navigate back to the `modified-test-net` directory to finish deploying the chaincode definition of the external smart contract to the channel. Make sure that your environment variables are still set.
 
 ```
 setGlobals 2
@@ -193,7 +193,7 @@ If all goes well, the program should run exactly the same as described in the "W
 
 **Note:** This section uses an example of self-signed certificate. You may use your organization hosted CA to issue the certificate and generate a key for production deployment.
 
-In the sample so far, you connected both peers in `test-network` to the single instance of chaincode server. However, if you would like to enable TLS between the peer nodes and the chaincode server, each peer node needs to have its own CA certificate. Enabling TLS is made possible at runtime in the chaincode.
+In the sample so far, you connected both peers in `modified-test-net` to the single instance of chaincode server. However, if you would like to enable TLS between the peer nodes and the chaincode server, each peer node needs to have its own CA certificate. Enabling TLS is made possible at runtime in the chaincode.
 
 - As a first step generate a keypair that can be used. Run these commands from the `fabric-samples/asset-transfer-basic/chaincode-external` directory.
 
@@ -214,8 +214,8 @@ openssl req -nodes -x509 -newkey rsa:4096 -keyout crypto/key2.pem -out crypto/ce
 - Copy the CA file contents for both `org1.example.com` & `org2.example.com`
 
 ```
-cp ../../test-network/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem crypto/rootcert1.pem
-cp ../../test-network/organizations/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem crypto/rootcert2.pem
+cp ../../modified-test-net/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem crypto/rootcert1.pem
+cp ../../modified-test-net/organizations/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem crypto/rootcert2.pem
 ```
 
 - Generate a client key and cert for auth purpose. You need a key and cert generated from the CA of each organization. Peer nodes act as clients to chaincode server.

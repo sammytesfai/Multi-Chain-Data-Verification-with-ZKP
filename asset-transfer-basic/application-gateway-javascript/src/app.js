@@ -23,7 +23,7 @@ const cryptoPath = envOrDefault(
         '..',
         '..',
         '..',
-        'test-network',
+        'modified-test-net',
         'organizations',
         'peerOrganizations',
         'org1.example.com'
