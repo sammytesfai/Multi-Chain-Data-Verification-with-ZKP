@@ -134,8 +134,8 @@ func TestCreateAssetSuccessful(t *testing.T) {
 	require.Equal(t, "id1", calledId)
 
 	expectedPrivateDetails := &chaincode.AssetPrivateDetails{
-		ID:             "id1",
-		AppraisedValue: 500,
+		ID:            "id1",
+		QuantityValue: 500,
 	}
 	assetBytes, err := json.Marshal(expectedPrivateDetails)
 	calledCollection, calledId, calledAssetBytes := chaincodeStub.PutPrivateDataArgsForCall(1)
@@ -167,15 +167,15 @@ func TestAgreeToTransferBadInput(t *testing.T) {
 
 	assetPrivDetail = &chaincode.AssetPrivateDetails{
 		// no ID
-		AppraisedValue: 500,
+		QuantityValue: 500,
 	}
 	setReturnAssetPrivateDetailsInTransientMap(t, chaincodeStub, assetPrivDetail)
 	err = assetTransferCC.AgreeToTransfer(transactionContext)
 	require.EqualError(t, err, "assetID field must be a non-empty string")
 
 	assetPrivDetail = &chaincode.AssetPrivateDetails{
-		ID:             "id1",
-		AppraisedValue: 500,
+		ID:            "id1",
+		QuantityValue: 500,
 	}
 	setReturnAssetPrivateDetailsInTransientMap(t, chaincodeStub, assetPrivDetail)
 	// asset does not exist
@@ -188,8 +188,8 @@ func TestAgreeToTransferSuccessful(t *testing.T) {
 	transactionContext, chaincodeStub := prepMocksAsOrg1()
 	assetTransferCC := chaincode.SmartContract{}
 	assetPrivDetail := &chaincode.AssetPrivateDetails{
-		ID:             "id1",
-		AppraisedValue: 500,
+		ID:            "id1",
+		QuantityValue: 500,
 	}
 	setReturnAssetPrivateDetailsInTransientMap(t, chaincodeStub, assetPrivDetail)
 	origAsset := chaincode.Asset{

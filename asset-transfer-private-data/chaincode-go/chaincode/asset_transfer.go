@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -36,8 +35,8 @@ type Asset struct {
 
 // AssetPrivateDetails describes details that are private to owners
 type AssetPrivateDetails struct {
-	ID             string `json:"assetID"`
-	AppraisedValue int    `json:"appraisedValue"`
+	ID            string `json:"assetID"`
+	QuantityValue int    `json:"quantityValue"`
 }
 
 // TransferAgreement describes the buyer agreement returned by ReadTransferAgreement
@@ -46,8 +45,14 @@ type TransferAgreement struct {
 	BuyerID string `json:"buyerID"`
 }
 
+type AssetQuery struct {
+	ID            string `json:"assetID"`
+	QuantityValue int    `json:"quantityValue"`
+	BuyerID       string `json:"buyer"`
+}
+
 // CreateAsset creates a new asset by placing the main asset details in the assetCollection
-// that can be read by both organizations. The appraisal value is stored in the owners org specific collection.
+// that can be read by both organizations. The quantity value is stored in the owners org specific collection.
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
 
 	// Get new asset from transient map
@@ -64,11 +69,11 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface)
 	}
 
 	type assetTransientInput struct {
-		Type           string `json:"objectType"` //Type is used to distinguish the various types of objects in state database
-		ID             string `json:"assetID"`
-		Color          string `json:"color"`
-		Size           int    `json:"size"`
-		AppraisedValue int    `json:"appraisedValue"`
+		Type          string `json:"objectType"` //Type is used to distinguish the various types of objects in state database
+		ID            string `json:"assetID"`
+		Color         string `json:"color"`
+		Size          int    `json:"size"`
+		QuantityValue int    `json:"quantityValue"`
 	}
 
 	var assetInput assetTransientInput
@@ -89,8 +94,8 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface)
 	if assetInput.Size <= 0 {
 		return fmt.Errorf("size field must be a positive integer")
 	}
-	if assetInput.AppraisedValue <= 0 {
-		return fmt.Errorf("appraisedValue field must be a positive integer")
+	if assetInput.QuantityValue <= 0 {
+		return fmt.Errorf("quantityValue field must be a positive integer")
 	}
 
 	// Check if asset already exists
@@ -141,8 +146,8 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface)
 
 	// Save asset details to collection visible to owning organization
 	assetPrivateDetails := AssetPrivateDetails{
-		ID:             assetInput.ID,
-		AppraisedValue: assetInput.AppraisedValue,
+		ID:            assetInput.ID,
+		QuantityValue: assetInput.QuantityValue,
 	}
 
 	assetPrivateDetailsAsBytes, err := json.Marshal(assetPrivateDetails) // marshal asset details to JSON
@@ -156,7 +161,7 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface)
 		return fmt.Errorf("failed to infer private collection name for the org: %v", err)
 	}
 
-	// Put asset appraised value into owners org specific private data collection
+	// Put asset quantity value into owners org specific private data collection
 	log.Printf("Put: collection %v, ID %v", orgCollection, assetInput.ID)
 	err = ctx.GetStub().PutPrivateData(orgCollection, assetInput.ID, assetPrivateDetailsAsBytes)
 	if err != nil {
@@ -165,8 +170,30 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface)
 	return nil
 }
 
+func (s *SmartContract) SendAssetQuery(ctx contractapi.TransactionContextInterface, assetID string, quantityValue int) error {
+	buyerid, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return fmt.Errorf("failed to get buyer identity: %v", err)
+	}
+
+	assetQuery := AssetQuery{
+		ID:            assetID,
+		QuantityValue: quantityValue,
+		BuyerID:       buyerid,
+	}
+
+	queryKey := "ASSET_QUERY_" + assetID
+
+	queryBytes, err := json.Marshal(assetQuery)
+	if err != nil {
+		return fmt.Errorf("failed to marshal asset query: %v", err)
+	}
+
+	return ctx.GetStub().PutState(queryKey, queryBytes)
+}
+
 // AgreeToTransfer is used by the potential buyer of the asset to agree to the
-// asset value. The agreed to appraisal value is stored in the buying orgs
+// asset value. The agreed to quantity value is stored in the buying orgs
 // org specifc collection, while the the buyer client ID is stored in the asset collection
 // using a composite key
 func (s *SmartContract) AgreeToTransfer(ctx contractapi.TransactionContextInterface) error {
@@ -200,8 +227,8 @@ func (s *SmartContract) AgreeToTransfer(ctx contractapi.TransactionContextInterf
 	if len(valueJSON.ID) == 0 {
 		return fmt.Errorf("assetID field must be a non-empty string")
 	}
-	if valueJSON.AppraisedValue <= 0 {
-		return fmt.Errorf("appraisedValue field must be a positive integer")
+	if valueJSON.QuantityValue <= 0 {
+		return fmt.Errorf("quantityValue field must be a positive integer")
 	}
 
 	// Read asset from the private data collection
@@ -328,7 +355,7 @@ func (s *SmartContract) TransferAsset(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("failed to infer private collection name for the org: %v", err)
 	}
 
-	// Delete the asset appraised value from this organization's private data collection
+	// Delete the asset quantity value from this organization's private data collection
 	err = ctx.GetStub().DelPrivateData(ownersCollection, assetTransferInput.ID)
 	if err != nil {
 		return err
@@ -351,7 +378,7 @@ func (s *SmartContract) TransferAsset(ctx contractapi.TransactionContextInterfac
 
 // verifyAgreement is an internal helper function used by TransferAsset to verify
 // that the transfer is being initiated by the owner and that the buyer has agreed
-// to the same appraisal value as the owner
+// to the same quantity value as the owner
 func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterface, assetID string, owner string, buyerMSP string) error {
 
 	// Check 1: verify that the transfer is being initiatied by the owner
@@ -366,7 +393,7 @@ func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterf
 		return fmt.Errorf("error: submitting client identity does not own asset")
 	}
 
-	// Check 2: verify that the buyer has agreed to the appraised value
+	// Check 2: verify that the buyer has agreed to the quantity value
 
 	// Get collection names
 	collectionOwner, err := getCollectionName(ctx) // get owner collection from caller identity
@@ -377,27 +404,27 @@ func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterf
 	collectionBuyer := buyerMSP + "PrivateCollection" // get buyers collection
 
 	// Get hash of owners agreed to value
-	ownerAppraisedValueHash, err := ctx.GetStub().GetPrivateDataHash(collectionOwner, assetID)
+	ownerQuantityValueHash, err := ctx.GetStub().GetPrivateDataHash(collectionOwner, assetID)
 	if err != nil {
-		return fmt.Errorf("failed to get hash of appraised value from owners collection %v: %v", collectionOwner, err)
+		return fmt.Errorf("failed to get hash of quantity value from owners collection %v: %v", collectionOwner, err)
 	}
-	if ownerAppraisedValueHash == nil {
-		return fmt.Errorf("hash of appraised value for %v does not exist in collection %v", assetID, collectionOwner)
+	if ownerQuantityValueHash == nil {
+		return fmt.Errorf("hash of quantity value for %v does not exist in collection %v", assetID, collectionOwner)
 	}
 
 	// Get hash of buyers agreed to value
-	buyerAppraisedValueHash, err := ctx.GetStub().GetPrivateDataHash(collectionBuyer, assetID)
+	buyerQuantityValueHash, err := ctx.GetStub().GetPrivateDataHash(collectionBuyer, assetID)
 	if err != nil {
-		return fmt.Errorf("failed to get hash of appraised value from buyer collection %v: %v", collectionBuyer, err)
+		return fmt.Errorf("failed to get hash of quantity value from buyer collection %v: %v", collectionBuyer, err)
 	}
-	if buyerAppraisedValueHash == nil {
-		return fmt.Errorf("hash of appraised value for %v does not exist in collection %v. AgreeToTransfer must be called by the buyer first", assetID, collectionBuyer)
+	if buyerQuantityValueHash == nil {
+		return fmt.Errorf("hash of quantity value for %v does not exist in collection %v. AgreeToTransfer must be called by the buyer first", assetID, collectionBuyer)
 	}
 
 	// Verify that the two hashes match
-	if !bytes.Equal(ownerAppraisedValueHash, buyerAppraisedValueHash) {
-		return fmt.Errorf("hash for appraised value for owner %x does not value for seller %x", ownerAppraisedValueHash, buyerAppraisedValueHash)
-	}
+	// if !bytes.Equal(ownerQuantityValueHash, buyerQuantityValueHash) {
+	// 	return fmt.Errorf("hash for quantity value for owner %x does not value for seller %x", ownerQuantityValueHash, buyerQuantityValueHash)
+	// }
 
 	return nil
 }

@@ -61,6 +61,27 @@ func (s *SmartContract) ReadAssetPrivateDetails(ctx contractapi.TransactionConte
 }
 
 // ReadTransferAgreement gets the buyer's identity from the transfer agreement from collection
+func (s *SmartContract) ReadAssetQuery(ctx contractapi.TransactionContextInterface, assetID string) (*AssetQuery, error) {
+	queryKey := "ASSET_QUERY_" + assetID
+
+	queryBytes, err := ctx.GetStub().GetState(queryKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get asset query: %v", err)
+	}
+	if queryBytes == nil {
+		return nil, fmt.Errorf("no query found for asset %s", assetID)
+	}
+
+	var assetQuery AssetQuery
+	err = json.Unmarshal(queryBytes, &assetQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal asset query: %v", err)
+	}
+
+	return &assetQuery, nil
+}
+
+// ReadTransferAgreement gets the buyer's identity from the transfer agreement from collection
 func (s *SmartContract) ReadTransferAgreement(ctx contractapi.TransactionContextInterface, assetID string) (*TransferAgreement, error) {
 	log.Printf("ReadTransferAgreement: collection %v, ID %v", assetCollection, assetID)
 	// composite key for TransferAgreement of this asset
@@ -187,4 +208,24 @@ func (s *SmartContract) getQueryResultForQueryString(ctx contractapi.Transaction
 		results = append(results, asset)
 	}
 	return results, nil
+}
+
+func (s *SmartContract) HandleAssetQuery(ctx contractapi.TransactionContextInterface, assetID string) (*AssetQuery, error) {
+	queryKey := "ASSET_QUERY_" + assetID
+
+	queryBytes, err := ctx.GetStub().GetState(queryKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get asset query: %v", err)
+	}
+	if queryBytes == nil {
+		return nil, fmt.Errorf("no query found for asset %s", assetID)
+	}
+
+	var assetQuery AssetQuery
+	err = json.Unmarshal(queryBytes, &assetQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal asset query: %v", err)
+	}
+
+	return &assetQuery, nil
 }

@@ -6,12 +6,18 @@
 
 import { connect, Contract } from '@hyperledger/fabric-gateway';
 import { TextDecoder } from 'util';
-import { groth16 } from "snarkjs";
-import fs from "fs";
+import * as snarkjs from 'snarkjs';
+import * as fs from 'fs';
+
 import {
     certDirectoryPathOrg1, certDirectoryPathOrg2, /*certDirectoryPathOrg3,*/ keyDirectoryPathOrg1, keyDirectoryPathOrg2, /*keyDirectoryPathOrg3,*/ newGrpcConnection, newIdentity,
     newSigner, peerEndpointOrg1, peerEndpointOrg2, /*peerEndpointOrg3,*/ peerNameOrg1, peerNameOrg2, /*peerNameOrg3,*/ tlsCertPathOrg1, tlsCertPathOrg2, /*tlsCertPathOrg3*/
 } from './connect';
+
+// Paths to necessary files for zkp
+const circuitWasmPath: string = './zkp_files/circuit_js/circuit.wasm';
+const zkeyPath: string = './zkp_files/circuit_final.zkey';
+const vkeyPath: string = './zkp_files/verification_key.json';
 
 const channelName1 = 'channel1';
 // const channelName2 = 'channel2';
@@ -106,22 +112,49 @@ async function main(): Promise<void> {
         // Create new assets on the ledger.
         await createAssets(contractOrg1);
 
+        await readAssetByID(contractOrg1, assetID1);
+
         // Read asset from the Org1's private data collection with ID in the given range.
-        await getAssetsByRange(contractOrg1);
+        await readAssetPrivateDetails(contractOrg1, assetID1, org1PrivateCollectionName);
 
         // Create new assets on the ledger.
         // await createAssets(contractOrg1_2);
 
         // Read asset from the Org1's private data collection with ID in the given range.
         // await getAssetsByRange(contractOrg1_2);
+        console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
+
+        // Make agreement to transfer the asset from Org1 to Org2.
+        await sendassetquery(contractOrg2, assetID1);
+
+        console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
+
+        // Read transfer agreement.
+        const requester_quantity = await readassetquery(contractOrg1, assetID1);
+        console.log('\n***Hello!!!\n');
+        // Input JSON
+        const input = {
+            a: requester_quantity.toString(),
+            b: assets[0]![3].toString()
+        };
+
+        // Run the proof generation and verification
+        console.log('\n***Hello!!!\n');
+        await generateProof(input);
+        console.log('\n***Hello!!!\n');
 
         console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
 
         // Read the asset by ID.
         await readAssetByID(contractOrg2, assetID1);
 
+        // Attempt to read private details of asset1 but should fail
+        await readAssetPrivateDetails(contractOrg2, assetID1, org2PrivateCollectionName);
+
         // Make agreement to transfer the asset from Org1 to Org2.
         await agreeToTransfer(contractOrg2, assetID1);
+
+        await readAssetPrivateDetails(contractOrg2, assetID1, org2PrivateCollectionName);
 
         // console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
 
@@ -178,6 +211,9 @@ async function main(): Promise<void> {
         // if (!org3ReadSuccess) {
         //     doFail(`Asset private data not found in ${org3PrivateCollectionName}`);
         // }
+        
+        await purgeAsset(contractOrg1, assetID1);
+        await purgeAsset(contractOrg2, assetID1);
     } finally {
         gatewayOrg1.close();
         clientOrg1.close();
@@ -205,7 +241,7 @@ async function createAssets(contract: Contract): Promise<void> {
         assetID: assets[counter]![0],
         color: assets[counter]![1],
         size: assets[counter]![2],
-        appraisedValue: assets[counter]![3],
+        quantityValue: assets[counter]![3],
     };
 
     await contract.submit('CreateAsset', {
@@ -217,23 +253,23 @@ async function createAssets(contract: Contract): Promise<void> {
     counter++;
 }
 
-async function getAssetsByRange(contract: Contract): Promise<void> {
-    // GetAssetByRange returns assets on the ledger with ID in the range of startKey (inclusive) and endKey (exclusive).
-    console.log(`\n--> Evaluate Transaction: ReadAssetPrivateDetails from ${org1PrivateCollectionName}`);
+// async function getAssetsByRange(contract: Contract): Promise<void> {
+//     // GetAssetByRange returns assets on the ledger with ID in the range of startKey (inclusive) and endKey (exclusive).
+//     console.log(`\n--> Evaluate Transaction: ReadAssetPrivateDetails from ${org1PrivateCollectionName}`);
 
-    const resultBytes = await contract.evaluateTransaction(
-        'GetAssetByRange',
-        assetID1,
-        `asset${String(now + 2)}`
-    );
+//     const resultBytes = await contract.evaluateTransaction(
+//         'GetAssetByRange',
+//         assetID1,
+//         `asset${String(now + 2)}`
+//     );
 
-    const resultString = utf8Decoder.decode(resultBytes);
-    if (!resultString) {
-        doFail('Received empty query list for readAssetPrivateDetailsOrg1');
-    }
-    const result: unknown = JSON.parse(resultString);
-    console.log('*** Result:', result);
-}
+//     const resultString = utf8Decoder.decode(resultBytes);
+//     if (!resultString) {
+//         doFail('Received empty query list for readAssetPrivateDetailsOrg1');
+//     }
+//     const result: unknown = JSON.parse(resultString);
+//     console.log('*** Result:', result);
+// }
 
 async function readAssetByID(contract: Contract, assetID: string): Promise<void> {
     console.log(`\n--> Evaluate Transaction: ReadAsset, ID: ${assetID}`);
@@ -247,11 +283,22 @@ async function readAssetByID(contract: Contract, assetID: string): Promise<void>
     console.log('*** Result:', result);
 }
 
+async function sendassetquery(contract: Contract, assetID: string): Promise<void> {
+    // Buyer from Org2 sends a query to the seller regarding an asset with an appraised value
+    const quantityValue = 99;
+    const assetQueryData = { assetID, quantityValue };
+    console.log('\n--> Submit Transaction: SendAssetQuery, payload:', assetQueryData);
+
+    await contract.submitTransaction('SendAssetQuery', assetID, quantityValue.toString());
+
+    console.log('*** Transaction committed successfully');
+}
+
 async function agreeToTransfer(contract: Contract, assetID: string): Promise<void> {
     // Buyer from Org2 agrees to buy the asset//
     // To purchase the asset, the buyer needs to agree to the same value as the asset owner
 
-    const dataForAgreement = { assetID, appraisedValue: 100 };
+    const dataForAgreement = { assetID, quantityValue: 99};
     console.log('\n--> Submit Transaction: AgreeToTransfer, payload:', dataForAgreement);
 
     await contract.submit('AgreeToTransfer', {
@@ -259,6 +306,21 @@ async function agreeToTransfer(contract: Contract, assetID: string): Promise<voi
     });
 
     console.log('*** Transaction committed successfully');
+}
+
+async function readassetquery(contract: Contract, assetID: string): Promise<number> {
+    // Seller retrieves the query sent by a buyer
+
+    console.log('\n--> Submit Transaction: ReadAssetQuery, assetID:', assetID);
+
+    const resultBytes = await contract.evaluateTransaction('ReadAssetQuery', assetID);
+    const resultString = utf8Decoder.decode(resultBytes);
+    if (!resultString) {
+        doFail('Received no result for ReadTransferAgreement');
+    }
+    const result = JSON.parse(resultString);
+    console.log('*** Result:', result);
+    return result.quantityValue;
 }
 
 async function readTransferAgreement(contract: Contract, assetID: string): Promise<void> {
@@ -298,15 +360,15 @@ async function transferAsset(contract: Contract, assetID: string): Promise<void>
 //     console.log('*** Transaction committed successfully');
 // }
 
-// async function purgeAsset(contract: Contract, assetID: string): Promise<void> {
-//     console.log('\n--> Submit Transaction: PurgeAsset, ID:', assetID);
-//     const dataForPurge = { assetID };
-//     await contract.submit('PurgeAsset', {
-//         transientData: { asset_purge: JSON.stringify(dataForPurge) },
-//     });
+async function purgeAsset(contract: Contract, assetID: string): Promise<void> {
+    console.log('\n--> Submit Transaction: PurgeAsset, ID:', assetID);
+    const dataForPurge = { assetID };
+    await contract.submit('PurgeAsset', {
+        transientData: { asset_purge: JSON.stringify(dataForPurge) },
+    });
 
-//     console.log('*** Transaction committed successfully');
-// }
+    console.log('*** Transaction committed successfully');
+}
 
 async function readAssetPrivateDetails(contract: Contract, assetID: string, collectionName: string): Promise<boolean> {
     console.log(`\n--> Evaluate Transaction: ReadAssetPrivateDetails from ${collectionName}, ID: ${assetID}`);
@@ -332,16 +394,31 @@ export function doFail(msgString: string): never {
     throw new Error(msgString);
 }
 
-async function generateProof(x: number, y: number) {
-    const input = { x, y };
+async function generateProof(input: { a: string; b: string }): Promise<void> {
+    try {
+        // Load the WASM file and zkey file
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            input, 
+            circuitWasmPath, 
+            zkeyPath
+        );
 
-    const wasmPath = "./greater_or_equal_js/greater_or_equal.wasm";
-    const zkeyPath = "./greater_or_equal.zkey";
+        // Write the proof and public signals to files
+        fs.writeFileSync('zkp_files/proof.json', JSON.stringify(proof));
+        fs.writeFileSync('zkp_files/public.json', JSON.stringify(publicSignals));
 
-    const { proof, publicSignals } = await groth16.fullProve(input, wasmPath, zkeyPath);
+        console.log("Proof generated successfully!");
 
-    console.log("Proof: ", proof);
-    console.log("Public Signals: ", publicSignals);
+        // Verify the proof
+        const vkey = JSON.parse(fs.readFileSync(vkeyPath, 'utf8'));
+        const isValid = await snarkjs.groth16.verify(vkey, publicSignals, proof);
 
-    return { proof, publicSignals };
+        if (isValid && publicSignals[0] === "1") {  // Assuming `oldEnough` is the first public signal
+            console.log("Proof is valid!");
+        } else {
+            console.log("Proof is invalid!");
+        }
+    } catch (err) {
+        console.error("Failed to generate proof:", err);
+    }
 }

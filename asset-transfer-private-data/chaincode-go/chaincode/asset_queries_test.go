@@ -59,8 +59,8 @@ func TestReadAssetPrivateDetails(t *testing.T) {
 	require.EqualError(t, err, "failed to read asset details: collection not found")
 
 	returnPrivData := &chaincode.AssetPrivateDetails{
-		ID:             "id1",
-		AppraisedValue: 5,
+		ID:            "id1",
+		QuantityValue: 5,
 	}
 	setReturnAssetPrivateDetailsInStub(t, chaincodeStub, returnPrivData)
 	assetRead, err := assetTransferCC.ReadAssetPrivateDetails(transactionContext, myOrg1PrivCollection, "id1")
