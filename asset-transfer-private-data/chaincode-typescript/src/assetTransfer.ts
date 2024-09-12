@@ -6,11 +6,14 @@ import stringify from 'json-stringify-deterministic';
 import sortKeysRecursive from 'sort-keys-recursive';
 import { Asset } from './asset';
 import { AssetPrivateDetails } from './assetTransferDetails';
-import { TransientAssetDelete, TransientAssetOwner, TransientAssetProperties, TransientAssetPurge, TransientAssetValue } from './assetTransferTransientInput';
+import { TransientAssetDelete, TransientAssetOwner, TransientAssetProperties, TransientAssetPurge, TransientAssetValue, TransientAssetQuery, TransientAssetProof, TransientProofResults } from './assetTransferTransientInput';
 import { TransferAgreement } from './transferAgreement';
+import * as snarkjs from 'snarkjs';
 
 const assetCollection = 'assetCollection';
 const transferAgreementObjectType = 'transferAgreement';
+const transferQueryObjectType = 'query';
+const transferProofObjectType = 'proof';
 
 @Info({ title: 'AssetTransfer', description: 'Smart contract for trading assets' })
 export class AssetTransfer extends Contract {
@@ -50,13 +53,123 @@ export class AssetTransfer extends Contract {
         // Save asset details to collection visible to owning organization
         const assetPrivateDetails: AssetPrivateDetails = {
             ID: assetProperties.assetID,
-            AppraisedValue: assetProperties.appraisedValue,
+            QuantityValue: assetProperties.quantityvalue,
         };
         // Get collection name for this organization.
         const orgCollection = this.getCollectionName(ctx);
         // Put asset appraised value into owners org specific private data collection
         console.log('Put: collection %v, ID %v', orgCollection, assetProperties.assetID);
         await ctx.stub.putPrivateData(orgCollection, asset.ID, Buffer.from(stringify(sortKeysRecursive(assetPrivateDetails))));
+    }
+
+    // SendAssetQuery is used by the potential buyer of the asset to ato query for an asset by checking if the sender has enough.
+    @Transaction()
+    public async SendAssetQuery(ctx: Context, assetID: string, quantityValue: number): Promise<void> {
+        const buyerID = ctx.clientIdentity.getID();
+        if (!buyerID) {
+            throw new Error('Failed to get buyer identity');
+        }
+        const assetquery: TransientAssetQuery = {
+            assetID: assetID,
+            quantityvalue: quantityValue,
+            buyerID: buyerID,
+        }
+
+        // const querykey = `ASSET_QUERY_${assetID}`;
+        // const queryBytes = Buffer.from(JSON.stringify(assetquery));
+        // await ctx.stub.putState(querykey, queryBytes);
+        const transferQueryKey = ctx.stub.createCompositeKey(transferQueryObjectType, [assetquery.assetID]);
+        await ctx.stub.putPrivateData(assetCollection, transferQueryKey, Buffer.from(stringify(sortKeysRecursive(assetquery))));
+    }
+
+    // ReadAssetQuery is used by the sender of the asset read the query that the buyer sent to identify later if they meet the needs of the buyer.
+    @Transaction()
+    public async ReadAssetQuery(ctx: Context, assetID: string): Promise<TransientAssetQuery> {
+        const transferQueryKey = ctx.stub.createCompositeKey(transferQueryObjectType, [assetID]);
+        const querybytes = await ctx.stub.getPrivateData(assetCollection, transferQueryKey);
+
+        // const querykey = `ASSET_QUERY_${assetID}`;
+        // const querybytes: Uint8Array = await ctx.stub.getState(querykey);
+        // if (!querybytes || querybytes.length === 0) {
+        //     throw new Error(`Asset query with ID ${assetID} does not exist`);
+        // }
+
+        let assetQuery: TransientAssetQuery;
+        try {
+            const queryJsonString = Buffer.from(querybytes).toString();
+            assetQuery = JSON.parse(queryJsonString);
+        } catch (err) {
+            throw new Error(`Failed to unmarshal asset query: ${err}`);
+        }
+        return assetQuery;
+    }
+
+    // SendAssetProof is used by the sender of the asset to send a proof for the buyer to verify they have the quantity required.
+    @Transaction()
+    public async SendAssetProof(ctx: Context, assetID: string, vkey: string, proof: string, publicsignals: string): Promise<void> {
+        // const proofkey = `ASSET_PROOF_${assetID}`;
+        const assetproof: TransientAssetProof = {
+            assetID: assetID,
+            vkey: vkey,
+            proof: proof,
+            publicsignals: publicsignals,
+        }
+
+        const transferProofKey = ctx.stub.createCompositeKey(transferProofObjectType, [assetID]);
+        await ctx.stub.putPrivateData(assetCollection, transferProofKey, Buffer.from(stringify(sortKeysRecursive(assetproof))));
+
+        // const proofbytes = Buffer.from(JSON.stringify(assetproof));
+        // await ctx.stub.putState(proofkey, proofbytes);
+    }
+
+    // ReadProofVerify is used by the sender of the asset read the query that the buyer sent to identify later if they meet the needs of the buyer.
+    @Transaction()
+    public async ReadProofVerify(ctx: Context, assetID: string): Promise<TransientProofResults> {
+        const tranferProofKey = ctx.stub.createCompositeKey(transferProofObjectType, [assetID]);
+        const proofbytes = await ctx.stub.getPrivateData(assetCollection, tranferProofKey);
+
+        
+        // const proofkey = `ASSET_PROOF_${assetID}`;
+        // const proofbytes: Uint8Array = await ctx.stub.getState(proofkey);
+        if (!proofbytes || proofbytes.length === 0) {
+            throw new Error(`Asset query with ID ${assetID} does not exist`);
+        }
+
+        let assetproof: TransientAssetProof;
+        try {
+            const queryJsonString = Buffer.from(proofbytes).toString();
+            assetproof = JSON.parse(queryJsonString);
+        } catch (err) {
+            throw new Error(`Failed to unmarshal asset query: ${err}`);
+        }
+
+        const vkey = JSON.parse(assetproof.vkey);
+        const proof = JSON.parse(assetproof.proof);
+        const publicsignals: string[] = JSON.parse(assetproof.publicsignals);
+        assetproof.vkey = JSON.parse(assetproof.vkey);
+        assetproof.proof = JSON.parse(assetproof.proof);
+
+        // Measure time taken to generate the proof
+        const startVerifyTime = Date.now();
+        const isValid = await snarkjs.groth16.verify(vkey, publicsignals, proof);
+        const endVerifyTime = Date.now();
+        const VerifyTime = endVerifyTime - startVerifyTime;
+
+        
+        if (isValid && publicsignals.map(item => Number(item))[0]) {  // Assuming `oldEnough` is the first public signal
+            
+            let proofresults: TransientProofResults = {
+                Validity: true,
+                VerifyTime: VerifyTime,
+            }
+            return proofresults;
+        } else {
+            let proofresults: TransientProofResults = {
+                Validity: false,
+                VerifyTime: VerifyTime,
+            }
+            return proofresults;
+        }
     }
 
     // AgreeToTransfer is used by the potential buyer of the asset to agree to the
@@ -70,13 +183,12 @@ export class AssetTransfer extends Contract {
         // Value is private, therefore it gets passed in transient field
         const transientMap = ctx.stub.getTransient();
         const assetValue = new TransientAssetValue(transientMap);
-
+        const buyer_asset_ID = clientID.match(/O=([^/]+)\//g)![1].match(/O=([^/.]+)/)?.[1] + assetValue.assetID.match(/(asset\d+)/)![1];
         const valueJSON: AssetPrivateDetails = {
-            ID: assetValue.assetID,
-            AppraisedValue: assetValue.appraisedValue,
+            ID: buyer_asset_ID,
+            QuantityValue: assetValue.quantityvalue,
         };
-        // Read asset from the private data collection
-        const asset = await this.ReadAsset(ctx, valueJSON.ID);
+        
         // Verify that the client is submitting request to peer in their organization
         this.verifyClientOrgMatchesPeerOrg(ctx);
 
@@ -84,18 +196,18 @@ export class AssetTransfer extends Contract {
         const orgCollection = this.getCollectionName(ctx);
         console.log(`AgreeToTransfer Put: collection ${orgCollection}, ID ${valueJSON.ID}`);
         // Put agreed value in the org specifc private data collection
-        await ctx.stub.putPrivateData(orgCollection, asset.ID, Buffer.from(stringify(sortKeysRecursive(valueJSON))));
+        await ctx.stub.putPrivateData(orgCollection, buyer_asset_ID, Buffer.from(stringify(sortKeysRecursive(valueJSON))));
         // Create agreeement that indicates which identity has agreed to purchase
         // In a more realistic transfer scenario, a transfer agreement would be secured to ensure that it cannot
         // be overwritten by another channel member
-        const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [valueJSON.ID]);
-        console.log(`AgreeToTransfer Put: collection ${assetCollection}, ID ${valueJSON.ID}, Key ${transferAgreeKey}`);
+        const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetValue.assetID]);
+        console.log(`AgreeToTransfer Put: collection ${assetCollection}, ID ${assetValue.assetID}, Key ${transferAgreeKey}`);
         await ctx.stub.putPrivateData(assetCollection, transferAgreeKey, new Uint8Array(Buffer.from(clientID)));
     }
 
     @Transaction()
     // TransferAsset transfers the asset to the new owner by setting a new owner ID
-    public async TransferAsset(ctx: Context): Promise<void> {
+    public async TransferAsset(ctx: Context): Promise<Asset> {
         // Asset properties are private, therefore they get passed in transient field
         const transientMap = ctx.stub.getTransient();
         const assetOwner = new TransientAssetOwner(transientMap);
@@ -106,24 +218,56 @@ export class AssetTransfer extends Contract {
         // Verify that the client is submitting request to peer in their organization
         this.verifyClientOrgMatchesPeerOrg(ctx);
         // Verify transfer details and transfer owner
-        await this.verifyAgreement(ctx, assetOwner.assetID, asset.Owner, assetOwner.buyerMSP);
+        const remaining_owner_quantity = await this.verifyAgreement(ctx, assetOwner.assetID, asset.Owner, assetOwner.buyer_quantity_value);
 
         const transferAgreement = await this.ReadTransferAgreement(ctx, assetOwner.assetID);
+        
+        // Regular expression to capture the organization after `/O=`
+        const new_owner_org = transferAgreement.BuyerID.match(/O=([^/]+)\//g)![1].match(/O=([^/.]+)/)?.[1];
+        const raw_asset_id = assetOwner.assetID.match(/(asset\d+)/)![1];
+
         if (transferAgreement.BuyerID === '') {
             throw new Error('BuyerID not found in TransferAgreement for ' + assetOwner.assetID);
         }
-        // Transfer asset in private data collection to new owner
-        asset.Owner = transferAgreement.BuyerID;
-        console.log(`TransferAsset Put: collection ${assetCollection}, ID ${assetOwner.assetID}`);
-        await ctx.stub.putPrivateData(assetCollection, assetOwner.assetID, Buffer.from(stringify(sortKeysRecursive(asset)))); // rewrite the asset
+        if (remaining_owner_quantity > 0) {
+            const collectionOwner = this.getCollectionName(ctx); // get owner collection from caller identity
 
-        // Get collection name for this organization
-        const ownersCollection = this.getCollectionName(ctx);
-        // Delete the asset appraised value from this organization's private data collection
-        await ctx.stub.deletePrivateData(ownersCollection, assetOwner.assetID);
-        // Delete the transfer agreement from the asset collection
-        const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetOwner.assetID]);
-        await ctx.stub.deletePrivateData(assetCollection, transferAgreeKey);
+            const owner_asset_private_data_bytes = await ctx.stub.getPrivateData(collectionOwner, assetOwner.assetID);
+            const owner_asset_private_data = AssetPrivateDetails.fromBytes(owner_asset_private_data_bytes);
+            owner_asset_private_data.QuantityValue = remaining_owner_quantity;
+            // Save the updated asset with the reduced quantity
+            console.log(`TransferAsset Put: collection ${collectionOwner}, ID ${assetOwner.assetID}, Updated Quantity: ${remaining_owner_quantity}`);
+            await ctx.stub.putPrivateData(collectionOwner, assetOwner.assetID, Buffer.from(stringify(owner_asset_private_data)));
+            
+            // Create a new asset entry for the buyer with the transferred quantity
+            let buyerAsset: Asset = {
+                ID: new_owner_org + raw_asset_id,
+                Color: asset.Color,
+                Size: asset.Size,
+                Owner: transferAgreement.BuyerID
+            }
+
+            // const buyerAsset = { ...asset, ID: new_owner_org + raw_asset_id, Owner: transferAgreement.BuyerID, Quantity: assetOwner.buyer_quantity_value };
+            // const buyerAssetKey = ctx.stub.createCompositeKey('asset', [transferAgreement.BuyerID, new_owner_org + raw_asset_id]);
+            await ctx.stub.putPrivateData(assetCollection, new_owner_org + raw_asset_id, Buffer.from(stringify(buyerAsset)));
+            return buyerAsset;
+        }
+        else
+        {
+            // Transfer asset in private data collection to new owner
+            asset.Owner = transferAgreement.BuyerID;
+            asset.ID = new_owner_org + raw_asset_id;
+            console.log(`TransferAsset Put: collection ${assetCollection}, ID ${assetOwner.assetID}`);
+            await ctx.stub.putPrivateData(assetCollection, assetOwner.assetID, Buffer.from(stringify(asset))); // rewrite the asset
+            // Get collection name for this organization
+            const ownersCollection = this.getCollectionName(ctx);
+            // Delete the asset appraised value from this organization's private data collection
+            await ctx.stub.deletePrivateData(ownersCollection, assetOwner.assetID);
+            // Delete the transfer agreement from the asset collection
+            const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetOwner.assetID]);
+            await ctx.stub.deletePrivateData(assetCollection, transferAgreeKey);
+            return asset;
+        }
     }
 
     @Transaction()
@@ -223,9 +367,8 @@ export class AssetTransfer extends Contract {
     // ReadAssetPrivateDetails reads the asset private details in organization specific collection
     @Transaction()
     public async ReadAssetPrivateDetails(ctx: Context, collection: string, id: string): Promise<AssetPrivateDetails> {
-        // Check if asset already exists
         const detailBytes = await ctx.stub.getPrivateData(collection, id);
-        // No Asset found, return empty response
+
         if (detailBytes.length === 0) {
             throw new Error(id + ' does not exist in collection ' + collection);
         }
@@ -269,7 +412,7 @@ export class AssetTransfer extends Contract {
     // verifyAgreement is an internal helper function used by TransferAsset to verify
     // that the transfer is being initiated by the owner and that the buyer has agreed
     // to the same appraisal value as the owner
-    public async verifyAgreement(ctx: Context, assetID: string, owner: string, buyerMSP: string): Promise<void> {
+    public async verifyAgreement(ctx: Context, assetID: string, owner: string, buyer_quantity_value: number): Promise<number> {
         // Check 1: verify that the transfer is being initiatied by the owner
         // Get ID of submitting client identity
         const clientID = ctx.clientIdentity.getID();
@@ -280,22 +423,12 @@ export class AssetTransfer extends Contract {
         // Get collection names
         const collectionOwner = this.getCollectionName(ctx); // get owner collection from caller identity
 
-        const collectionBuyer = buyerMSP + 'PrivateCollection'; // get buyers collection
-        // Get hash of owners agreed to value
-        const ownerAppraisedValueHash = await ctx.stub.getPrivateDataHash(collectionOwner, assetID);
-
-        if (ownerAppraisedValueHash.length === 0) {
-            throw new Error(`hash of appraised value for ${assetID} does not exist in collection ${collectionOwner}`);
+        const owner_quanity_value_bytes = await ctx.stub.getPrivateData(collectionOwner, assetID);
+        const owner_quanity_value = AssetPrivateDetails.fromBytes(owner_quanity_value_bytes)
+        if (owner_quanity_value.QuantityValue < buyer_quantity_value) {
+            throw new Error(`Quantity value held by owner for ${assetID} does not satisfy the buyers request`);
         }
-        // Get hash of buyers agreed to value
-        const buyerAppraisedValueHash = await ctx.stub.getPrivateDataHash(collectionBuyer, assetID);
-        if (buyerAppraisedValueHash.length === 0) {
-            throw new Error(`hash of appraised value for ${assetID} does not exist in collection ${collectionBuyer}. AgreeToTransfer must be called by the buyer first`);
-        }
-        // Verify that the two hashes match
-        if (ownerAppraisedValueHash.toString() !== buyerAppraisedValueHash.toString()) {
-            throw new Error(`hash for appraised value for owner ${Buffer.from(ownerAppraisedValueHash).toString('hex')} does not match value for seller ${Buffer.from(buyerAppraisedValueHash).toString('hex')}`);
-        }
+        return owner_quanity_value.QuantityValue - buyer_quantity_value;
     }
     // getCollectionName is an internal helper function to get collection of submitting client identity.
     public getCollectionName(ctx: Context): string {

@@ -82,6 +82,27 @@ func (s *SmartContract) ReadAssetQuery(ctx contractapi.TransactionContextInterfa
 }
 
 // ReadTransferAgreement gets the buyer's identity from the transfer agreement from collection
+func (s *SmartContract) ReadAssetProof(ctx contractapi.TransactionContextInterface, assetID string) (*AssetProof, error) {
+	proofKey := "ASSET_PROOF_" + assetID
+
+	proofBytes, err := ctx.GetStub().GetState(proofKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get asset proof: %v", err)
+	}
+	if proofBytes == nil {
+		return nil, fmt.Errorf("no proof found for asset %s", assetID)
+	}
+
+	var assetProof AssetProof
+	err = json.Unmarshal(proofBytes, &assetProof)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal asset proof: %v", err)
+	}
+
+	return &assetProof, nil
+}
+
+// ReadTransferAgreement gets the buyer's identity from the transfer agreement from collection
 func (s *SmartContract) ReadTransferAgreement(ctx contractapi.TransactionContextInterface, assetID string) (*TransferAgreement, error) {
 	log.Printf("ReadTransferAgreement: collection %v, ID %v", assetCollection, assetID)
 	// composite key for TransferAgreement of this asset

@@ -11,7 +11,7 @@ export class AssetPrivateDetails {
     @Property()
     ID: string = "";
     @Property()
-    AppraisedValue: number = 0;
+    QuantityValue: number = 0;
 
     static fromBytes(bytes: Uint8Array): AssetPrivateDetails {
         if (bytes.length === 0) {
@@ -22,9 +22,9 @@ export class AssetPrivateDetails {
 
         const result = new AssetPrivateDetails();
         result.ID = nonEmptyString(properties.ID, "ID field must be a non-empty string");
-        result.AppraisedValue = positiveNumber(
-            properties.AppraisedValue,
-            "AppraisedValue field must be a positive integer"
+        result.QuantityValue = positiveNumber(
+            properties.QuantityValue,
+            "QuantityValue field must be a positive integer"
         );
 
         return result;

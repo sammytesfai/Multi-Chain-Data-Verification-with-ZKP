@@ -7,7 +7,7 @@ template GreatEq() {
     signal input b;
     signal output Enough;
 
-    // 8 bits is plenty to store age
+    // 8 bits is plenty to store quantity
     component gt = GreaterEqThan(8);
     gt.in[0] <== a;
     gt.in[1] <== b;

@@ -51,6 +51,13 @@ type AssetQuery struct {
 	BuyerID       string `json:"buyer"`
 }
 
+type AssetProof struct {
+	ID            string `json:"assetID"`
+	Vkey          string `json:"vkey"`
+	Proof         string `json:"proof"`
+	PublicSignals string `json:"publicSignals"`
+}
+
 // CreateAsset creates a new asset by placing the main asset details in the assetCollection
 // that can be read by both organizations. The quantity value is stored in the owners org specific collection.
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
@@ -190,6 +197,47 @@ func (s *SmartContract) SendAssetQuery(ctx contractapi.TransactionContextInterfa
 	}
 
 	return ctx.GetStub().PutState(queryKey, queryBytes)
+}
+
+func (s *SmartContract) SendAssetProof(ctx contractapi.TransactionContextInterface, assetID string, vkey string, proof string, publicSignals string) error {
+	assetProof := AssetProof{
+		ID:            assetID,
+		Vkey:          vkey,
+		Proof:         proof,
+		PublicSignals: publicSignals,
+	}
+
+	proofKey := "ASSET_PROOF_" + assetID
+
+	proofBytes, err := json.Marshal(assetProof)
+	if err != nil {
+		return fmt.Errorf("failed to marshal asset query: %v", err)
+	}
+	return ctx.GetStub().PutState(proofKey, proofBytes)
+}
+
+func (s *SmartContract) VerifyProof(ctx contractapi.TransactionContextInterface, assetID string, vkeyString string, proofString string, publicSignalsString string) bool {
+	var vkey map[string]interface{}
+	err := json.Unmarshal([]byte(vkeyString), &vkey)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+		return false
+	}
+
+	var proof map[string]interface{}
+	err = json.Unmarshal([]byte(proofString), &proof)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+		return false
+	}
+
+	var publicSignals []int
+	err = json.Unmarshal([]byte(publicSignalsString), &publicSignals)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+		return false
+	}
+	return false
 }
 
 // AgreeToTransfer is used by the potential buyer of the asset to agree to the

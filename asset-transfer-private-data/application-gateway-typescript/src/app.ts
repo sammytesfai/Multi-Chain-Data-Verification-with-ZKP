@@ -48,6 +48,7 @@ const assets: Asset[] = [
 //   [assetID2, 'red', 50, 727],
 ];
 let counter = 0;
+const QuantityValueRequested = 99; 
 
 async function main(): Promise<void> {
     const clientOrg1 = await newGrpcConnection(
@@ -110,108 +111,90 @@ async function main(): Promise<void> {
         console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
 
         // Create new assets on the ledger.
-        await createAssets(contractOrg1);
+        await createAssets(contractOrg1, 'org1' + assetID1);
 
-        await readAssetByID(contractOrg1, assetID1);
-
-        // Read asset from the Org1's private data collection with ID in the given range.
-        await readAssetPrivateDetails(contractOrg1, assetID1, org1PrivateCollectionName);
-
-        // Create new assets on the ledger.
-        // await createAssets(contractOrg1_2);
+        await readAssetByID(contractOrg1, 'org1' + assetID1);
 
         // Read asset from the Org1's private data collection with ID in the given range.
-        // await getAssetsByRange(contractOrg1_2);
+        await readAssetPrivateDetails(contractOrg1, 'org1' + assetID1, org1PrivateCollectionName);
+
         console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
 
+        // Measure time taken to generate the proof
+        console.time("Communication Time");
+        const startGenTime = Date.now();
+
         // Make agreement to transfer the asset from Org1 to Org2.
-        await sendassetquery(contractOrg2, assetID1);
+        await sendassetquery(contractOrg2, 'org1' + assetID1);
 
         console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
 
         // Read transfer agreement.
-        const requester_quantity = await readassetquery(contractOrg1, assetID1);
-        console.log('\n***Hello!!!\n');
+        const requester_quantity = await readassetquery(contractOrg1, 'org1' + assetID1);
+        
         // Input JSON
         const input = {
-            a: requester_quantity.toString(),
-            b: assets[0]![3].toString()
+            a: assets[0]![3].toString(),
+            b: requester_quantity.toString()
         };
 
+        const endGenTime = Date.now();
+        const genTime = endGenTime - startGenTime;
+        console.timeEnd("Communication Time");
+
+        // Append proof generation time to a file
+        fs.appendFileSync('zkp_files/communication_time.txt', `Communication Time: ${genTime} ms\n`);
+
+
         // Run the proof generation and verification
-        console.log('\n***Hello!!!\n');
-        await generateProof(input);
-        console.log('\n***Hello!!!\n');
+        await generateproof_send(contractOrg1, 'org1' + assetID1, input);
 
         console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
 
-        // Read the asset by ID.
-        await readAssetByID(contractOrg2, assetID1);
+        // Read Proof details and verify proof
+        const proof_results = await readasset_verifyproof(contractOrg2, 'org1' + assetID1);
+        console.log("Proof: ", proof_results);
 
-        // Attempt to read private details of asset1 but should fail
-        await readAssetPrivateDetails(contractOrg2, assetID1, org2PrivateCollectionName);
+        if (proof_results == "Verified") {
+            // Make agreement to transfer the asset from Org1 to Org2.
+            await readAssetPrivateDetails(contractOrg1, 'org1' + assetID1, org1PrivateCollectionName);
+            await agreeToTransfer(contractOrg2, 'org1' + assetID1);
+            await readAssetByID(contractOrg1, 'org1' + assetID1);
+            await readAssetPrivateDetails(contractOrg1, 'org1' + assetID1, org1PrivateCollectionName);
 
-        // Make agreement to transfer the asset from Org1 to Org2.
-        await agreeToTransfer(contractOrg2, assetID1);
-
-        await readAssetPrivateDetails(contractOrg2, assetID1, org2PrivateCollectionName);
-
-        // console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
-
-        // Read the asset by ID.
-        // await readAssetByID(contractOrg3, assetID2);
-
-        // Make agreement to transfer the asset from Org1 to Org2.
-        // await agreeToTransfer(contractOrg3, assetID2);
-
-        console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
-
-        // Read transfer agreement.
-        await readTransferAgreement(contractOrg1, assetID1);
-
-        // Read transfer agreement.
-        // await readTransferAgreement(contractOrg1_2, assetID2);
-
-        // Transfer asset to Org2.
-        await transferAsset(contractOrg1, assetID1);
-
-        // Transfer asset to Org3.
-        // await transferAsset(contractOrg1_2, assetID2);
-
-        // Again ReadAsset : results will show that the buyer identity now owns the asset.
-        await readAssetByID(contractOrg1, assetID1);
-
-        // Again ReadAsset : results will show that the buyer identity now owns the asset.
-        // await readAssetByID(contractOrg1_2, assetID2);
-
-        // Confirm that transfer removed the private details from the Org1 collection.
-        const org1ReadSuccess = await readAssetPrivateDetails(contractOrg1, assetID1, org1PrivateCollectionName);
-        if (org1ReadSuccess) {
-            doFail(`Asset private data still exists in ${org1PrivateCollectionName}`);
-        }
-
-        // Confirm that transfer removed the private details from the Org1 collection.
-        // const org1ReadSuccess_2 = await readAssetPrivateDetails(contractOrg1_2, assetID2, org1PrivateCollectionName);
-        // if (org1ReadSuccess_2) {
-        //     doFail(`Asset private data still exists in ${org1PrivateCollectionName}`);
-        // }
-
-        console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
-
-        // Org2 can read asset private details: Org2 is owner, and private details exist in new owner's Collection
-        const org2ReadSuccess = await readAssetPrivateDetails(contractOrg2, assetID1, org2PrivateCollectionName);
-        if (!org2ReadSuccess) {
-            doFail(`Asset private data not found in ${org2PrivateCollectionName}`);
-        }
-
-        // console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
-
-        // Org2 can read asset private details: Org2 is owner, and private details exist in new owner's Collection
-        // const org3ReadSuccess = await readAssetPrivateDetails(contractOrg3, assetID2, org3PrivateCollectionName);
-        // if (!org3ReadSuccess) {
-        //     doFail(`Asset private data not found in ${org3PrivateCollectionName}`);
-        // }
+            await readAssetPrivateDetails(contractOrg2, 'org2' + assetID1, org2PrivateCollectionName);
         
+            console.log('\n~~~~~~~~~~~~~~~~ As Org1 Client ~~~~~~~~~~~~~~~~');
+
+            // Read transfer agreement.
+            await readTransferAgreement(contractOrg1, 'org1' + assetID1);
+
+            await readAssetByID(contractOrg1, 'org1' + assetID1);
+
+            // // Transfer asset to Org2.
+            await transferAsset(contractOrg1, 'org1' + assetID1, requester_quantity);
+
+            // // Again ReadAsset : results will show that the buyer identity now owns the asset.
+            await readAssetByID(contractOrg1, 'org1' + assetID1);
+
+            console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
+
+            // Org1 can read asset private details: Org1 is owner, and private details exist in new owner's Collection
+            const org1ReadSuccess = await readAssetPrivateDetails(contractOrg1, 'org1' + assetID1, org1PrivateCollectionName);
+            if (!org1ReadSuccess) {
+                doFail(`Asset private data not found in ${org1PrivateCollectionName}`);
+            }
+
+            // Org2 can read asset private details: Org2 is owner, and private details exist in new owner's Collection
+            const org2ReadSuccess = await readAssetPrivateDetails(contractOrg2, 'org2' + assetID1, org2PrivateCollectionName);
+            if (!org2ReadSuccess) {
+                doFail(`Asset private data not found in ${org2PrivateCollectionName}`);
+            }
+        }
+        else {
+            console.log("\nFailed to Verify Asset");
+        }
+
         await purgeAsset(contractOrg1, assetID1);
         await purgeAsset(contractOrg2, assetID1);
     } finally {
@@ -231,17 +214,17 @@ main().catch((error: unknown) => {
 /**
  * Submit a transaction synchronously, blocking until it has been committed to the ledger.
  */
-async function createAssets(contract: Contract): Promise<void> {
+async function createAssets(contract: Contract, assetID: string): Promise<void> {
     const assetType = 'ValuableAsset';
 
     console.log(`\n--> Submit Transaction: CreateAsset, ID: ${assets[counter]![0]}`);
 
     const asset1Data = {
         objectType: assetType,
-        assetID: assets[counter]![0],
+        assetID: assetID,
         color: assets[counter]![1],
         size: assets[counter]![2],
-        quantityValue: assets[counter]![3],
+        quantityvalue: assets[counter]![3],
     };
 
     await contract.submit('CreateAsset', {
@@ -252,24 +235,6 @@ async function createAssets(contract: Contract): Promise<void> {
 
     counter++;
 }
-
-// async function getAssetsByRange(contract: Contract): Promise<void> {
-//     // GetAssetByRange returns assets on the ledger with ID in the range of startKey (inclusive) and endKey (exclusive).
-//     console.log(`\n--> Evaluate Transaction: ReadAssetPrivateDetails from ${org1PrivateCollectionName}`);
-
-//     const resultBytes = await contract.evaluateTransaction(
-//         'GetAssetByRange',
-//         assetID1,
-//         `asset${String(now + 2)}`
-//     );
-
-//     const resultString = utf8Decoder.decode(resultBytes);
-//     if (!resultString) {
-//         doFail('Received empty query list for readAssetPrivateDetailsOrg1');
-//     }
-//     const result: unknown = JSON.parse(resultString);
-//     console.log('*** Result:', result);
-// }
 
 async function readAssetByID(contract: Contract, assetID: string): Promise<void> {
     console.log(`\n--> Evaluate Transaction: ReadAsset, ID: ${assetID}`);
@@ -285,11 +250,11 @@ async function readAssetByID(contract: Contract, assetID: string): Promise<void>
 
 async function sendassetquery(contract: Contract, assetID: string): Promise<void> {
     // Buyer from Org2 sends a query to the seller regarding an asset with an appraised value
-    const quantityValue = 99;
-    const assetQueryData = { assetID, quantityValue };
+    const quantityvalue = QuantityValueRequested;
+    const assetQueryData = { assetID, quantityvalue };
     console.log('\n--> Submit Transaction: SendAssetQuery, payload:', assetQueryData);
 
-    await contract.submitTransaction('SendAssetQuery', assetID, quantityValue.toString());
+    await contract.submitTransaction('SendAssetQuery', assetID, quantityvalue.toString());
 
     console.log('*** Transaction committed successfully');
 }
@@ -298,7 +263,7 @@ async function agreeToTransfer(contract: Contract, assetID: string): Promise<voi
     // Buyer from Org2 agrees to buy the asset//
     // To purchase the asset, the buyer needs to agree to the same value as the asset owner
 
-    const dataForAgreement = { assetID, quantityValue: 99};
+    const dataForAgreement = { assetID, quantityvalue: QuantityValueRequested};
     console.log('\n--> Submit Transaction: AgreeToTransfer, payload:', dataForAgreement);
 
     await contract.submit('AgreeToTransfer', {
@@ -320,7 +285,7 @@ async function readassetquery(contract: Contract, assetID: string): Promise<numb
     }
     const result = JSON.parse(resultString);
     console.log('*** Result:', result);
-    return result.quantityValue;
+    return result.quantityvalue;
 }
 
 async function readTransferAgreement(contract: Contract, assetID: string): Promise<void> {
@@ -339,15 +304,20 @@ async function readTransferAgreement(contract: Contract, assetID: string): Promi
     console.log('*** Result:', result);
 }
 
-async function transferAsset(contract: Contract, assetID: string): Promise<void> {
+async function transferAsset(contract: Contract, assetID: string, buyer_quantity_value: number): Promise<void> {
     console.log(`\n--> Submit Transaction: TransferAsset, ID: ${assetID}`);
 
-    const buyerDetails = { assetID, buyerMSP: mspIdOrg2 };
-    await contract.submit('TransferAsset', {
+    const buyerDetails = { assetID, buyerMSP: mspIdOrg2, buyer_quantity_value: buyer_quantity_value };
+    const restultbytes = await contract.submit('TransferAsset', {
         transientData: { asset_owner: JSON.stringify(buyerDetails) },
     });
-
+    const resultstring = utf8Decoder.decode(restultbytes);
+    if (!resultstring) {
+        doFail('Received no result for ReadTransferAgreement');
+    }
+    const result: unknown = JSON.parse(resultstring);
     console.log('*** Transaction committed successfully');
+    console.log('*** Result:', result);
 }
 
 // async function deleteAsset(contract: Contract, assetID: string): Promise<void> {
@@ -394,31 +364,47 @@ export function doFail(msgString: string): never {
     throw new Error(msgString);
 }
 
-async function generateProof(input: { a: string; b: string }): Promise<void> {
+async function generateproof_send(contract: Contract, assetID: string, input: { a: string; b: string }): Promise<void> {
+    console.log('\n--> Submit Transaction: Generating Proof and sending to org2, assetID:', assetID);
     try {
+        // Measure time taken to generate the proof
+        const startGenTime = Date.now();
+
         // Load the WASM file and zkey file
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
             input, 
             circuitWasmPath, 
             zkeyPath
         );
+        const vkey = JSON.parse(fs.readFileSync(vkeyPath, 'utf8'));
 
+        const endGenTime = Date.now();
+        const genTime = endGenTime - startGenTime;
+        
+        // Append proof generation time to a file
+        fs.appendFileSync('zkp_files/generation_time.txt', `Proof Generation Time: ${genTime} ms\n`);
+        console.log('*** Result:', {assetID: assetID, vkey: vkey, proof: proof, publicSignals:  publicSignals});
+        await contract.submitTransaction('SendAssetProof', assetID, JSON.stringify(vkey), JSON.stringify(proof), JSON.stringify(publicSignals));
         // Write the proof and public signals to files
         fs.writeFileSync('zkp_files/proof.json', JSON.stringify(proof));
         fs.writeFileSync('zkp_files/public.json', JSON.stringify(publicSignals));
-
-        console.log("Proof generated successfully!");
-
-        // Verify the proof
-        const vkey = JSON.parse(fs.readFileSync(vkeyPath, 'utf8'));
-        const isValid = await snarkjs.groth16.verify(vkey, publicSignals, proof);
-
-        if (isValid && publicSignals[0] === "1") {  // Assuming `oldEnough` is the first public signal
-            console.log("Proof is valid!");
-        } else {
-            console.log("Proof is invalid!");
-        }
     } catch (err) {
         console.error("Failed to generate proof:", err);
+        throw err;  // Rethrow the error to ensure the function fails as expected
+    }
+}
+
+async function readasset_verifyproof(contract: Contract, assetID: string): Promise<string> {
+    console.log('\n--> Submit Transaction: Reading and Verifying Proof, assetID:', assetID);
+    const resultBytes = await contract.evaluateTransaction('ReadProofVerify', assetID);
+    const result = JSON.parse(utf8Decoder.decode(resultBytes));
+    console.log("\nReturn: ", result);
+    // Append proof verification time to a file
+    fs.appendFileSync('zkp_files/verification_time.txt', `Proof Verification Time: ${result.VerifyTime} ms\n`);
+    if (result.Validity) {
+        return "Verified";
+    }
+    else {
+        return "Not Verified";
     }
 }
