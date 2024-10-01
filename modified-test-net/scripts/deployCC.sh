@@ -80,6 +80,8 @@ infoln "Installing chaincode on peer0.org$ORG1..."
 installChaincode $ORG1
 infoln "Install chaincode on peer0.org$ORG2..."
 installChaincode $ORG2
+infoln "Install chaincode on peer0.org3..."
+installChaincode 3
 
 resolveSequence
 
@@ -91,30 +93,41 @@ approveForMyOrg $ORG1
 
 ## check whether the chaincode definition is ready to be committed
 ## expect org1 to have approved and org2 not to
-checkCommitReadiness $ORG1 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": false"
-checkCommitReadiness $ORG2 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": false"
+checkCommitReadiness $ORG1 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": false" "\"Org3MSP\": false"
+checkCommitReadiness $ORG2 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": false" "\"Org3MSP\": false"
+checkCommitReadiness 3 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": false" "\"Org3MSP\": false"
 
 ## now approve also for org2
 approveForMyOrg $ORG2
 
 ## check whether the chaincode definition is ready to be committed
 ## expect them both to have approved
-checkCommitReadiness $ORG1 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true"
-checkCommitReadiness $ORG2 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true"
+checkCommitReadiness $ORG1 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true" "\"Org3MSP\": false"
+checkCommitReadiness $ORG2 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true" "\"Org3MSP\": false"
+checkCommitReadiness 3 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true" "\"Org3MSP\": false"
+
+approveForMyOrg 3
+
+## check whether the chaincode definition is ready to be committed
+## expect them both to have approved
+checkCommitReadiness $ORG1 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true" "\"Org3MSP\": true"
+checkCommitReadiness $ORG2 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true" "\"Org3MSP\": true"
+checkCommitReadiness 3 "\"Org"$ORG1"MSP\": true" "\"Org"$ORG2"MSP\": true" "\"Org3MSP\": true"
 
 ## now that we know for sure both orgs have approved, commit the definition
-commitChaincodeDefinition $ORG1 $ORG2
+commitChaincodeDefinition $ORG1 $ORG2 3
 
 ## query on both orgs to see that the definition committed successfully
 queryCommitted $ORG1
 queryCommitted $ORG2
+queryCommitted 3
 
 ## Invoke the chaincode - this does require that the chaincode have the 'initLedger'
 ## method defined
 if [ "$CC_INIT_FCN" = "NA" ]; then
   infoln "Chaincode initialization is not required"
 else
-  chaincodeInvokeInit $ORG1 $ORG2
+  chaincodeInvokeInit $ORG1 $ORG2 3
 fi
 
 exit 0

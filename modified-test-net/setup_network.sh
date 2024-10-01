@@ -27,9 +27,9 @@ sleep 1
 
 ./network.sh up -numorgs 3 -ca -s couchdb
 ./network.sh createChannel -c channel1 -org1 1 -org2 2
-./network.sh createChannel -c channel2 -org1 1 -org2 3
+# ./network.sh createChannel -c channel2 -org1 1 -org2 3
 
 export PATH=$PATH:/usr/local/go/bin
 
-./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-typescript/ -ccl typescript -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json  -c channel1 -org1 1 -org2 2
-./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-typescript/ -ccl typescript -ccep "OR('Org1MSP.peer','Org3MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json  -c channel2 -org1 1 -org2 3
+./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-typescript/ -ccl typescript -ccep "OR('Org1MSP.peer','Org2MSP.peer','Org3MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-typescript/collections_config.json  -c channel1 -org1 1 -org2 2
+# ./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-typescript/ -ccl typescript -ccep "OR('Org1MSP.peer','Org3MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json  -c channel2 -org1 1 -org2 3

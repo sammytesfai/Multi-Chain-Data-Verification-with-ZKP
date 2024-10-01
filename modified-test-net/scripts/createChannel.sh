@@ -127,11 +127,15 @@ infoln "Joining org1 peer to the channel..."
 joinChannel $ORG1
 infoln "Joining org2 peer to the channel..."
 joinChannel $ORG2
+infoln "Joining org3 peer to the channel..."
+joinChannel 3
 
 ## Set the anchor peers for each org in the channel
 infoln "Setting anchor peer for org1..."
 setAnchorPeer $ORG1
 infoln "Setting anchor peer for org2..."
 setAnchorPeer $ORG2
+infoln "Setting anchor peer for org3..."
+setAnchorPeer 3
 
 successln "Channel '$CHANNEL_NAME' joined"

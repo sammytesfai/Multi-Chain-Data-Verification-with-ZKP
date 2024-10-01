@@ -1,5 +1,7 @@
 #!/bin/bash
 
+rm zkp_files/proof_info.json
+
 original_dir=$(pwd)
 
 circom circuit.circom --r1cs --wasm --sym --c --output zkp_files
