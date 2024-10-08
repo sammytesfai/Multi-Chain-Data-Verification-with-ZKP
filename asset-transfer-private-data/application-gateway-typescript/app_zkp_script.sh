@@ -1,28 +1,19 @@
 #!/bin/bash
 
-set +x
+original_dir=$(pwd)
 
-for ((i=1; i<=10; i++))
-do
-    rm zkp_files/proof_info.json
+circom circuit.circom --r1cs --wasm --sym --c --output zkp_files
 
-    original_dir=$(pwd)
+cd zkp_files
 
-    circom circuit.circom --r1cs --wasm --sym --c --output zkp_files
+snarkjs groth16 setup circuit.r1cs ../pot12_final.ptau circuit_0000.zkey
 
-    cd zkp_files
+snarkjs zkey contribute circuit_0000.zkey circuit_final.zkey --name="First Contributor" -v
 
-    snarkjs groth16 setup circuit.r1cs ../pot12_final.ptau circuit_0000.zkey
+snarkjs zkey export verificationkey circuit_final.zkey verification_key.json
 
-    echo "one" | snarkjs zkey contribute circuit_0000.zkey circuit_final.zkey --name="First Contributor" -v
+cd $original_dir
 
-    snarkjs zkey export verificationkey circuit_final.zkey verification_key.json
+npm install
 
-    cd $original_dir
-
-    npm install
-
-    timeout 28 npm start
-
-    sleep 2
-done
+npm start

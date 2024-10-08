@@ -19,6 +19,9 @@ ORDERER_CA=${DIR}/modified-test-net/organizations/ordererOrganizations/example.c
 PEER0_ORG1_CA=${DIR}/modified-test-net/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem
 PEER0_ORG2_CA=${DIR}/modified-test-net/organizations/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem
 PEER0_ORG3_CA=${DIR}/modified-test-net/organizations/peerOrganizations/org3.example.com/tlsca/tlsca.org3.example.com-cert.pem
+PEER0_ORG4_CA=${DIR}/modified-test-net/organizations/peerOrganizations/org4.example.com/tlsca/tlsca.org4.example.com-cert.pem
+PEER0_ORG5_CA=${DIR}/modified-test-net/organizations/peerOrganizations/org5.example.com/tlsca/tlsca.org5.example.com-cert.pem
+PEER0_ORG6_CA=${DIR}/modified-test-net/organizations/peerOrganizations/org6.example.com/tlsca/tlsca.org6.example.com-cert.pem
 
 
 if [[ ${ORG,,} == "org1" || ${ORG,,} == "digibank" ]]; then
@@ -42,6 +45,26 @@ elif [[ ${ORG,,} == "org3" || ${ORG,,} == "sammycorp" ]]; then
    CORE_PEER_ADDRESS=localhost:11051
    CORE_PEER_TLS_ROOTCERT_FILE=${DIR}/modified-test-net/organizations/peerOrganizations/org3.example.com/tlsca/tlsca.org3.example.com-cert.pem
 
+elif [[ ${ORG,,} == "org4" || ${ORG,,} == "tesfaicorp" ]]; then
+
+   CORE_PEER_LOCALMSPID=Org4MSP
+   CORE_PEER_MSPCONFIGPATH=${DIR}/modified-test-net/organizations/peerOrganizations/org4.example.com/users/Admin@org4.example.com/msp
+   CORE_PEER_ADDRESS=localhost:13051
+   CORE_PEER_TLS_ROOTCERT_FILE=${DIR}/modified-test-net/organizations/peerOrganizations/org4.example.com/tlsca/tlsca.org4.example.com-cert.pem
+
+elif [[ ${ORG,,} == "org5" || ${ORG,,} == "UCSCcorp" ]]; then
+
+   CORE_PEER_LOCALMSPID=Org5MSP
+   CORE_PEER_MSPCONFIGPATH=${DIR}/modified-test-net/organizations/peerOrganizations/org5.example.com/users/Admin@org5.example.com/msp
+   CORE_PEER_ADDRESS=localhost:15051
+   CORE_PEER_TLS_ROOTCERT_FILE=${DIR}/modified-test-net/organizations/peerOrganizations/org5.example.com/tlsca/tlsca.org5.example.com-cert.pem
+
+elif [[ ${ORG,,} == "org6" || ${ORG,,} == "SRHScorp" ]]; then
+
+   CORE_PEER_LOCALMSPID=Org6MSP
+   CORE_PEER_MSPCONFIGPATH=${DIR}/modified-test-net/organizations/peerOrganizations/org6.example.com/users/Admin@org6.example.com/msp
+   CORE_PEER_ADDRESS=localhost:16051
+   CORE_PEER_TLS_ROOTCERT_FILE=${DIR}/modified-test-net/organizations/peerOrganizations/org6.example.com/tlsca/tlsca.org6.example.com-cert.pem
 
 else
    echo "Unknown \"$ORG\", please choose Org1/Digibank or Org2/Magnetocorp"
@@ -59,6 +82,9 @@ echo "ORDERER_CA=${ORDERER_CA}"
 echo "PEER0_ORG1_CA=${PEER0_ORG1_CA}"
 echo "PEER0_ORG2_CA=${PEER0_ORG2_CA}"
 echo "PEER0_ORG3_CA=${PEER0_ORG3_CA}"
+echo "PEER0_ORG4_CA=${PEER0_ORG4_CA}"
+echo "PEER0_ORG5_CA=${PEER0_ORG5_CA}"
+echo "PEER0_ORG6_CA=${PEER0_ORG6_CA}"
 
 echo "CORE_PEER_MSPCONFIGPATH=${CORE_PEER_MSPCONFIGPATH}"
 echo "CORE_PEER_ADDRESS=${CORE_PEER_ADDRESS}"
