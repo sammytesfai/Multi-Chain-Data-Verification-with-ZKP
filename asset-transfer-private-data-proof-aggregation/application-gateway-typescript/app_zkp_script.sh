@@ -2,7 +2,7 @@
 
 set +x
 
-for ((i=1; i<=10; i++))
+for ((i=1; i<=20; i++))
 do
     rm zkp_files/proof_info.json
 
@@ -22,7 +22,7 @@ do
 
     npm install
 
-    timeout 28 npm start
+    timeout 50 npm start
 
     sleep 2
 done

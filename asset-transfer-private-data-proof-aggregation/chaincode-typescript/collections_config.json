@@ -4,7 +4,7 @@
     "policy": "OR('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member', 'Org4MSP.member', 'Org5MSP.member', 'Org6MSP.member')",
     "requiredPeerCount": 1,
     "maxPeerCount": 1,
-    "blockToLive":1000000,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -16,7 +16,7 @@
     "policy": "OR('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member', 'Org4MSP.member', 'Org5MSP.member', 'Org6MSP.member')",
     "requiredPeerCount": 1,
     "maxPeerCount": 1,
-    "blockToLive":1000000,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -28,7 +28,7 @@
     "policy": "OR('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member', 'Org4MSP.member', 'Org5MSP.member', 'Org6MSP.member')",
     "requiredPeerCount": 1,
     "maxPeerCount": 1,
-    "blockToLive":1000000,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -40,7 +40,7 @@
     "policy": "OR('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member', 'Org4MSP.member', 'Org5MSP.member', 'Org6MSP.member')",
     "requiredPeerCount": 1,
     "maxPeerCount": 1,
-    "blockToLive":1000000,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -52,7 +52,7 @@
     "policy": "OR('Org1MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive":3,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -64,7 +64,7 @@
     "policy": "OR('Org2MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive":3,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -76,7 +76,7 @@
     "policy": "OR('Org3MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive":3,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -88,7 +88,7 @@
     "policy": "OR('Org4MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive":3,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -100,7 +100,7 @@
     "policy": "OR('Org5MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive":3,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
@@ -112,7 +112,7 @@
     "policy": "OR('Org6MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive":3,
+    "blockToLive":1000000000,
     "memberOnlyRead": true,
     "memberOnlyWrite": true,
     "endorsementPolicy": {
