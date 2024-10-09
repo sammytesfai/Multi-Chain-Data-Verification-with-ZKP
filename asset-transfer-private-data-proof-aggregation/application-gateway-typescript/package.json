@@ -1,0 +1,38 @@
+{
+    "name": "asset-transfer-private-data-proof-aggregation",
+    "version": "1.0.0",
+    "description": "Asset transfer private data application implemented in typeScript using fabric-gateway",
+    "main": "dist/index.js",
+    "typings": "dist/index.d.ts",
+    "engines": {
+        "node": ">=18"
+    },
+    "scripts": {
+        "build": "tsc",
+        "build:watch": "tsc -w",
+        "lint": "eslint src",
+        "prepare": "npm run build",
+        "pretest": "npm run lint",
+        "start": "node dist/app.js"
+    },
+    "engineStrict": true,
+    "author": "Hyperledger",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@grpc/grpc-js": "^1.10",
+        "@hyperledger/fabric-gateway": "^1.5",
+        "circomlib": "^2.0.5",
+        "snarkjs": "^0.7.4",
+        "ws": "^8.18.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.3.0",
+        "@tsconfig/node18": "^18.2.2",
+        "@types/node": "^18.19.45",
+        "@types/snarkjs": "^0.7.8",
+        "@types/ws": "^8.5.12",
+        "eslint": "^8.57.0",
+        "typescript": "~5.4",
+        "typescript-eslint": "^7.13.0"
+    }
+}
