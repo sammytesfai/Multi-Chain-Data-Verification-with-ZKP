@@ -107,6 +107,75 @@ Organizations:
       Endorsement:
         Type: Signature
         Rule: "OR('Org3MSP.peer')"
+  - &Org4
+    # DefaultOrg defines the organization which is used in the sampleconfig
+    # of the fabric.git development environment
+    Name: Org4MSP
+    # ID to load the MSP definition as
+    ID: Org4MSP
+    MSPDir: ../organizations/peerOrganizations/org4.example.com/msp
+    # Policies defines the set of policies at this level of the config tree
+    # For organization policies, their canonical path is usually
+    #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('Org4MSP.admin', 'Org4MSP.peer', 'Org4MSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('Org4MSP.admin', 'Org4MSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('Org4MSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('Org4MSP.peer')"
+  - &Org5
+    # DefaultOrg defines the organization which is used in the sampleconfig
+    # of the fabric.git development environment
+    Name: Org5MSP
+    # ID to load the MSP definition as
+    ID: Org5MSP
+    MSPDir: ../organizations/peerOrganizations/org5.example.com/msp
+    # Policies defines the set of policies at this level of the config tree
+    # For organization policies, their canonical path is usually
+    #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('Org5MSP.admin', 'Org5MSP.peer', 'Org5MSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('Org5MSP.admin', 'Org5MSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('Org5MSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('Org5MSP.peer')"
+  - &Org6
+    # DefaultOrg defines the organization which is used in the sampleconfig
+    # of the fabric.git development environment
+    Name: Org6MSP
+    # ID to load the MSP definition as
+    ID: Org6MSP
+    MSPDir: ../organizations/peerOrganizations/org6.example.com/msp
+    # Policies defines the set of policies at this level of the config tree
+    # For organization policies, their canonical path is usually
+    #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('Org6MSP.admin', 'Org6MSP.peer', 'Org6MSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('Org6MSP.admin', 'Org6MSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('Org6MSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('Org6MSP.peer')"
 ################################################################################
 #
 #   SECTION: Capabilities
@@ -300,4 +369,7 @@ Profiles:
         - *Org1
         - *Org2
         - *Org3
+        - *Org4
+        - *Org5
+        - *Org6
       Capabilities: *ApplicationCapabilities
