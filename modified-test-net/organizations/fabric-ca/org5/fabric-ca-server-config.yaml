@@ -304,8 +304,8 @@ csr:
    cn: ca.org5.example.com
    names:
       - C: US
-        ST: "Florida"
-        L: "Miami"
+        ST: "North Carolina"
+        L: "Charlotte"
         O: org5.example.com
         OU:
    hosts:

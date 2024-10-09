@@ -304,8 +304,8 @@ csr:
    cn: ca.org6.example.com
    names:
       - C: US
-        ST: "Arizona"
-        L: "Phoenix"
+        ST: "Washington"
+        L: "Seattle"
         O: org6.example.com
         OU:
    hosts:

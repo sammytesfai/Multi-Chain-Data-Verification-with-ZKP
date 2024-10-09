@@ -11,9 +11,12 @@ import { TransferAgreement } from './transferAgreement';
 import * as snarkjs from 'snarkjs';
 
 const assetCollection = 'assetCollection';
+const queryCollection = 'queryCollection';
+const proofCollection = 'proofCollection';
+const agreementCollection = 'agreementCollection';
 const transferAgreementObjectType = 'transferAgreement';
-const transferQueryObjectType = 'query';
-const transferProofObjectType = 'proof';
+const transferQueryObjectType = 'transferQuery';
+const transferProofObjectType = 'transferProof';
 
 @Info({ title: 'AssetTransfer', description: 'Smart contract for trading assets' })
 export class AssetTransfer extends Contract {
@@ -64,7 +67,7 @@ export class AssetTransfer extends Contract {
 
     // SendAssetQuery is used by the potential buyer of the asset to ato query for an asset by checking if the sender has enough.
     @Transaction()
-    public async SendAssetQuery(ctx: Context, assetID: string, quantityValue: number): Promise<void> {
+    public async SendAssetQuery(ctx: Context, assetID: string, quantityValue: number, sender_org: string): Promise<void> {
         const buyerID = ctx.clientIdentity.getID();
         if (!buyerID) {
             throw new Error('Failed to get buyer identity');
@@ -75,24 +78,15 @@ export class AssetTransfer extends Contract {
             buyerID: buyerID,
         }
 
-        // const querykey = `ASSET_QUERY_${assetID}`;
-        // const queryBytes = Buffer.from(JSON.stringify(assetquery));
-        // await ctx.stub.putState(querykey, queryBytes);
-        const transferQueryKey = ctx.stub.createCompositeKey(transferQueryObjectType, [assetquery.assetID]);
-        await ctx.stub.putPrivateData(assetCollection, transferQueryKey, Buffer.from(stringify(sortKeysRecursive(assetquery))));
+        const transferQueryKey = ctx.stub.createCompositeKey(transferQueryObjectType, [assetquery.assetID, sender_org]);
+        await ctx.stub.putPrivateData(queryCollection, transferQueryKey, Buffer.from(stringify(sortKeysRecursive(assetquery))));
     }
 
     // ReadAssetQuery is used by the sender of the asset read the query that the buyer sent to identify later if they meet the needs of the buyer.
     @Transaction()
-    public async ReadAssetQuery(ctx: Context, assetID: string): Promise<TransientAssetQuery> {
-        const transferQueryKey = ctx.stub.createCompositeKey(transferQueryObjectType, [assetID]);
-        const querybytes = await ctx.stub.getPrivateData(assetCollection, transferQueryKey);
-
-        // const querykey = `ASSET_QUERY_${assetID}`;
-        // const querybytes: Uint8Array = await ctx.stub.getState(querykey);
-        // if (!querybytes || querybytes.length === 0) {
-        //     throw new Error(`Asset query with ID ${assetID} does not exist`);
-        // }
+    public async ReadAssetQuery(ctx: Context, assetID: string, sender_org: string): Promise<TransientAssetQuery> {
+        const transferQueryKey = ctx.stub.createCompositeKey(transferQueryObjectType, [assetID, sender_org]);
+        const querybytes = await ctx.stub.getPrivateData(queryCollection, transferQueryKey);
 
         let assetQuery: TransientAssetQuery;
         try {
@@ -118,40 +112,17 @@ export class AssetTransfer extends Contract {
         const transferProofKey = ctx.stub.createCompositeKey(transferProofObjectType, [assetID]);
         await ctx.stub.putPrivateData(assetCollection, transferProofKey, Buffer.from(stringify(sortKeysRecursive(assetproof))));
 
-        // const proofbytes = Buffer.from(JSON.stringify(assetproof));
-        // await ctx.stub.putState(proofkey, proofbytes);
+        await ctx.stub.putPrivateData(proofCollection, transferProofKey, Buffer.from(stringify(sortKeysRecursive(assetproof))));
     }
 
     // ReadProofVerify is used by the sender of the asset read the query that the buyer sent to identify later if they meet the needs of the buyer.
     @Transaction()
-    public async ReadProofVerify(ctx: Context, assetID: string): Promise<TransientProofResults> {
-        const tranferProofKey = ctx.stub.createCompositeKey(transferProofObjectType, [assetID]);
-        const proofbytes = await ctx.stub.getPrivateData(assetCollection, tranferProofKey);
-
-        
-        // const proofkey = `ASSET_PROOF_${assetID}`;
-        // const proofbytes: Uint8Array = await ctx.stub.getState(proofkey);
-        if (!proofbytes || proofbytes.length === 0) {
-            throw new Error(`Asset query with ID ${assetID} does not exist`);
-        }
-
-        let assetproof: TransientAssetProof;
-        try {
-            const queryJsonString = Buffer.from(proofbytes).toString();
-            assetproof = JSON.parse(queryJsonString);
-        } catch (err) {
-            throw new Error(`Failed to unmarshal asset query: ${err}`);
-        }
-
-        const vkey = JSON.parse(assetproof.vkey);
-        const proof = JSON.parse(assetproof.proof);
-        const publicsignals: string[] = JSON.parse(assetproof.publicsignals);
-        assetproof.vkey = JSON.parse(assetproof.vkey);
-        assetproof.proof = JSON.parse(assetproof.proof);
+    public async ReadProofVerify(ctx: Context, assetID: string, vkey: string, proof: string, publicSignals: string): Promise<TransientProofResults> {
+        const publicsignals: string[] = JSON.parse(publicSignals);
 
         // Measure time taken to generate the proof
         const startVerifyTime = Date.now();
-        const isValid = await snarkjs.groth16.verify(vkey, publicsignals, proof);
+        const isValid = await snarkjs.groth16.verify(JSON.parse(vkey), publicsignals, JSON.parse(proof));
         const endVerifyTime = Date.now();
         const VerifyTime = endVerifyTime - startVerifyTime;
 
@@ -183,7 +154,7 @@ export class AssetTransfer extends Contract {
         // Value is private, therefore it gets passed in transient field
         const transientMap = ctx.stub.getTransient();
         const assetValue = new TransientAssetValue(transientMap);
-        const buyer_asset_ID = clientID.match(/O=([^/]+)\//g)![1].match(/O=([^/.]+)/)?.[1] + assetValue.assetID.match(/(asset\d+)/)![1];
+        const buyer_asset_ID = clientID.match(/\/O=(org\d+)\.example\.com/)![1] + assetValue.assetID.match(/(asset\d+)/)![1];
         const valueJSON: AssetPrivateDetails = {
             ID: buyer_asset_ID,
             QuantityValue: assetValue.quantityvalue,
@@ -196,18 +167,19 @@ export class AssetTransfer extends Contract {
         const orgCollection = this.getCollectionName(ctx);
         console.log(`AgreeToTransfer Put: collection ${orgCollection}, ID ${valueJSON.ID}`);
         // Put agreed value in the org specifc private data collection
+
         await ctx.stub.putPrivateData(orgCollection, buyer_asset_ID, Buffer.from(stringify(sortKeysRecursive(valueJSON))));
         // Create agreeement that indicates which identity has agreed to purchase
         // In a more realistic transfer scenario, a transfer agreement would be secured to ensure that it cannot
         // be overwritten by another channel member
         const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetValue.assetID]);
-        console.log(`AgreeToTransfer Put: collection ${assetCollection}, ID ${assetValue.assetID}, Key ${transferAgreeKey}`);
-        await ctx.stub.putPrivateData(assetCollection, transferAgreeKey, new Uint8Array(Buffer.from(clientID)));
+        console.log(`AgreeToTransfer Put: collection ${agreementCollection}, ID ${assetValue.assetID}, Key ${transferAgreeKey}`);
+        await ctx.stub.putPrivateData(agreementCollection, transferAgreeKey, new Uint8Array(Buffer.from(clientID)));
     }
 
     @Transaction()
     // TransferAsset transfers the asset to the new owner by setting a new owner ID
-    public async TransferAsset(ctx: Context): Promise<Asset> {
+    public async TransferAsset(ctx: Context): Promise<void> {
         // Asset properties are private, therefore they get passed in transient field
         const transientMap = ctx.stub.getTransient();
         const assetOwner = new TransientAssetOwner(transientMap);
@@ -247,10 +219,11 @@ export class AssetTransfer extends Contract {
                 Owner: transferAgreement.BuyerID
             }
 
-            // const buyerAsset = { ...asset, ID: new_owner_org + raw_asset_id, Owner: transferAgreement.BuyerID, Quantity: assetOwner.buyer_quantity_value };
-            // const buyerAssetKey = ctx.stub.createCompositeKey('asset', [transferAgreement.BuyerID, new_owner_org + raw_asset_id]);
             await ctx.stub.putPrivateData(assetCollection, new_owner_org + raw_asset_id, Buffer.from(stringify(buyerAsset)));
-            return buyerAsset;
+            
+            // Delete the transfer agreement from the asset collection
+            const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetOwner.assetID]);
+            await ctx.stub.deletePrivateData(agreementCollection, transferAgreeKey);
         }
         else
         {
@@ -258,15 +231,15 @@ export class AssetTransfer extends Contract {
             asset.Owner = transferAgreement.BuyerID;
             asset.ID = new_owner_org + raw_asset_id;
             console.log(`TransferAsset Put: collection ${assetCollection}, ID ${assetOwner.assetID}`);
-            await ctx.stub.putPrivateData(assetCollection, assetOwner.assetID, Buffer.from(stringify(asset))); // rewrite the asset
+            await ctx.stub.putPrivateData(assetCollection, new_owner_org + raw_asset_id, Buffer.from(stringify(asset))); // rewrite the asset
             // Get collection name for this organization
             const ownersCollection = this.getCollectionName(ctx);
             // Delete the asset appraised value from this organization's private data collection
             await ctx.stub.deletePrivateData(ownersCollection, assetOwner.assetID);
+            await ctx.stub.deletePrivateData(assetCollection, assetOwner.assetID);
             // Delete the transfer agreement from the asset collection
             const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetOwner.assetID]);
-            await ctx.stub.deletePrivateData(assetCollection, transferAgreeKey);
-            return asset;
+            await ctx.stub.deletePrivateData(agreementCollection, transferAgreeKey);
         }
     }
 
@@ -381,7 +354,7 @@ export class AssetTransfer extends Contract {
         // composite key for TransferAgreement of this asset
         const transferAgreeKey = ctx.stub.createCompositeKey(transferAgreementObjectType, [assetID]);
         // Get the identity from collection
-        const buyerIdentity = await ctx.stub.getPrivateData(assetCollection, transferAgreeKey);
+        const buyerIdentity = await ctx.stub.getPrivateData(agreementCollection, transferAgreeKey);
 
         if (buyerIdentity.length === 0) {
             throw new Error(`TransferAgreement for ${assetID} does not exist `);
